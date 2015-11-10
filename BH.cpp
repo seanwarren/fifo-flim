@@ -18,7 +18,7 @@ void CHECK(int err)
 
 BH::BH(QObject* parent, short module_type) :
 FifoTcspc(parent),
-module_type(module_type),
+module_type(module_type)
 {
    // Load INI configuration file
    char ini_name[] = "C:/users/bsherloc/desktop/FIFO.ini";
@@ -53,7 +53,7 @@ module_type(module_type),
 
 void BH::Init()
 {
-   cur_flimage = new FLIMage(1, 1, 0, 0, this);
+   FifoTcspc::Init();
 
    // Setup rate timer
    SPC_clear_rates(act_mod);
@@ -178,54 +178,6 @@ void BH::WriteFileHeader()
    data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
 }
 
-void BH::SetRecording(bool recording_)
-{
-   if (recording != recording_)
-   {
-      if (recording_)
-      {
-         StartRecording();
-      }
-      else
-      {
-         recording = false;
-         data_stream.setDevice(nullptr);
-         file.close();
-      }
-   }
-
-   emit RecordingStatusChanged(recording);
-}
-
-void BH::StartRecording(const QString& specified_file_name)
-{
-   QString file_name = specified_file_name;
-
-   if (recording)
-      return;
-
-   if (file_name == "")
-   {
-      QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-      folder.append("/FLIM data.spc");
-      file_name = QFileDialog::getSaveFileName(nullptr, "Choose a file name", folder, "SPC file (*.spc)");
-   }
-
-   if (!file_name.isEmpty())
-   {
-
-      file.setFileName(file_name);
-      file.open(QIODevice::WriteOnly);
-      data_stream.setDevice(&file);
-      data_stream.setByteOrder(QDataStream::LittleEndian);
-
-      if (scanning)
-         WriteFileHeader();
-
-      recording = true;
-   }
-}
-
 
 
 void BH::ReaderThread()
@@ -295,7 +247,7 @@ bool BH::ReadPhotons()
 
    while (photons_in_buffer < 0.75 * buffer_length)
    {
-      unsigned long read_size = (buffer_length - photons_in_buffer) * word_length;
+      unsigned long read_size = (static_cast<unsigned long>(buffer_length) - photons_in_buffer) * word_length;
 
       // before the call read_size contains required number of words to read from fifo
       // after the call current_cnt contains number of words read from fifo  
@@ -339,7 +291,7 @@ bool BH::ReadPhotons()
 // This function is mostly lifted from the use_spcm.c 
 // example file
 //============================================================
-void BH::ConfigureFIFO()
+void BH::ConfigureModule()
 {
 
    float curr_mode;

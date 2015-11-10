@@ -29,6 +29,7 @@ add_definitions(${QT_DEFINITIONS})
 
 set(SOURCE
    FLIMage.cpp
+   FifoTcspc.cpp
    ${BH_SOURCE}
    ${CL_SOURCE}
 )
@@ -36,8 +37,8 @@ set(SOURCE
 set(HEADERS
    FLIMage.h
    PhotonBuffer.h
-   ${BH_SOURCE}
-   ${CL_SOURCE}
+   ${BH_HEADERS}
+   ${CL_HEADERS}
 )
 
 include_directories(${BH_INCLUDE} ${CL_INCLUDE} ${Qt5Widgets_INCLUDE_DIRS} ${InstrumentControl_INCLUDE_DIR})

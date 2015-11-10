@@ -7,7 +7,7 @@
 
 using namespace std;
  
-FifoTcspc(QObject* parent) :
+FifoTcspc::FifoTcspc(QObject* parent) :
 	ImageSource(parent),
 	photon_buffer(PhotonBuffer(1000, 10000))
 {
@@ -24,7 +24,7 @@ void FifoTcspc::SetScanning(bool scanning_)
 
 void FifoTcspc::StartScanning()
 {
-	ConfigureFIFO();
+	ConfigureModule();
 	StartFIFO();
 }
 
@@ -55,18 +55,6 @@ void FifoTcspc::SetImageSize(int n)
 	}
 }
 
-void BH::WriteFileHeader()
-{
-	// Write header
-	quint32 spc_header;
-	quint32 magic_number = 0xF1F0;
-	quint32 header_size = 4;
-	quint32 format_version = 1;
-
-	CHECK(SPC_get_fifo_init_vars(act_mod, NULL, NULL, NULL, &spc_header));
-
-	data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
-}
 
 void FifoTcspc::SetRecording(bool recording_)
 {
@@ -117,7 +105,7 @@ void FifoTcspc::StartRecording(const QString& specified_file_name)
 }
 
 
-void BH::StartFIFO()
+void FifoTcspc::StartFIFO()
 {
 	StartModule();
 
@@ -131,8 +119,8 @@ void BH::StartFIFO()
 	scanning = true;
 
 	// Start thread
-	reader_thread = std::thread(&BH::ReaderThread, this);
-	processor_thread = std::thread(&BH::ProcessorThread, this);
+   reader_thread = std::thread(&FifoTcspc::ReaderThread, this);
+   processor_thread = std::thread(&FifoTcspc::ProcessorThread, this);
 
 }
 

@@ -5,6 +5,7 @@
 #include "PhotonBuffer.h"
 #include <Spcm_def.h>
 
+
 #include <string>
 #include <iostream>
 #include <vector>
@@ -44,18 +45,25 @@ public:
 	cv::Mat GetImage();
 	cv::Mat GetImageUnsafe();
 
+signals:
+
+   void RecordingStatusChanged(bool recording);
+
 protected:
 
 	void StartFIFO();
 	void StopFIFO();
 
 	virtual void StartModule() = 0;
-
-	virtual void ConfigureFIFO() = 0;
+	virtual void ConfigureModule() = 0;
 	virtual void ReadFIFO() = 0;
 
 	void ProcessorThread();
+   virtual void ReaderThread() = 0;
 
+   virtual void WriteFileHeader() = 0;
+
+   void ProcessPhotons();
 
 	FLIMage* cur_flimage;
 
@@ -80,6 +88,8 @@ protected:
 	QFile file;
 	QDataStream data_stream;
 	bool recording = false;
+   int spc_header = 0;
+
 };
 
 class BH : public FifoTcspc
@@ -97,16 +107,14 @@ public:
 
 signals:
 
-	void RatesUpdated(rate_values rates);
 	void RecordingStatusChanged(bool recording);
-	void FifoUsageUpdated(float usage);
+   void RatesUpdated(rate_values rates);
+   void FifoUsageUpdated(float usage);
 
 private:
 
-	void ConfigureFIFO();
-	void StartFIFO();
-	void StopFIFO();
-	void ReadFIFO();
+	void StartModule();
+   void ConfigureModule();
 
 	void WriteFileHeader();
 	void SetSyncThreshold(float threshold);
@@ -115,7 +123,6 @@ private:
 	void ReaderThread();
 
 	bool ReadPhotons(); // return whether there are more photons to read
-	void ProcessPhotons();
 	void ReadRemainingPhotonsFromStream();
 
 	void ActivateSPCMCards(short module_type, bool force_activation = false);
