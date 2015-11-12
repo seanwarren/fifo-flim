@@ -18,7 +18,8 @@ void CHECK(int err)
 
 BH::BH(QObject* parent, short module_type) :
 FifoTcspc(parent),
-module_type(module_type)
+module_type(module_type),
+packet_buffer(PacketBuffer<Photon>(1000, 10000))
 {
    // Load INI configuration file
    char ini_name[] = "C:/users/bsherloc/desktop/FIFO.ini";
@@ -235,7 +236,7 @@ bool BH::ReadPhotons()
    short ret = 0;
    bool more_to_read = true;
 
-   vector<Photon>& buffer = photon_buffer.GetNextBufferToFill();
+   vector<Photon>& buffer = packet_buffer.GetNextBufferToFill();
 
    int photons_in_buffer = 0;
    size_t buffer_length = buffer.size();
@@ -260,7 +261,7 @@ bool BH::ReadPhotons()
 
       unsigned long n_photons_read = read_size / words_per_photon;
       photons_in_buffer += n_photons_read;
-      photons_read += n_photons_read;
+      packets_read += n_photons_read;
 
       if (ret < 0)
          break;
@@ -274,11 +275,11 @@ bool BH::ReadPhotons()
    if (photons_in_buffer > 0)
    {
       buffer.resize(photons_in_buffer);
-      photon_buffer.FinishedFillingBuffer();
+      packet_buffer.FinishedFillingBuffer();
    }
    else
    {
-      photon_buffer.FailedToFillBuffer();
+      packet_buffer.FailedToFillBuffer();
    }
 
    return more_to_read;

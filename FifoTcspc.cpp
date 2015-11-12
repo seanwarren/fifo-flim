@@ -8,8 +8,7 @@
 using namespace std;
  
 FifoTcspc::FifoTcspc(QObject* parent) :
-	ImageSource(parent),
-	photon_buffer(PhotonBuffer(1000, 10000))
+	ImageSource(parent)
 {
 
 }
@@ -145,7 +144,7 @@ void FifoTcspc::ProcessorThread()
 
 void FifoTcspc::ProcessPhotons()
 {
-	vector<Photon>& buffer = photon_buffer.GetNextBufferToProcess();
+	vector<Photon>& buffer = packet_buffer.GetNextBufferToProcess();
 
 	if (buffer.empty()) // TODO: use a condition variable here
 		return;
@@ -153,6 +152,6 @@ void FifoTcspc::ProcessPhotons()
 	for (auto& p : buffer)
 		cur_flimage->AddPhotonEvent(p);
 
-	photon_buffer.FinishedProcessingBuffer();
+	packet_buffer.FinishedProcessingBuffer();
 }
 

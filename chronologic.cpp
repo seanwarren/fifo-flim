@@ -1,4 +1,5 @@
-#include "BH.h"
+#include "Chronologic.h"
+
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QFileDialog>
@@ -11,256 +12,161 @@ void CHECK(int err)
 {
    if (err < 0)
    {
-      std::cout << "BH Error Code: " << err;
-      throw std::exception("BH Error", err);
+      std::cout << "Chronologic Error Code: " << err;
+      throw std::exception("Chronologic Error", err);
    }
 }
 
-BH::BH(QObject* parent, short module_type) :
+Chronologic::Chronologic(QObject* parent) :
 FifoTcspc(parent),
-module_type(module_type),
+packet_buffer(PacketBuffer<crono_packet>(1000, 10000))
 {
-   // Load INI configuration file
-   char ini_name[] = "C:/users/bsherloc/desktop/FIFO.ini";
-   CHECK(SPC_init(ini_name));
+   CheckCard();
+   ConfigureCard();
 
-   // Activate cards and check we've got at least one that works
-   ActivateSPCMCards(module_type);
-
-   if (total_no_of_spc == 0)
-      throw std::exception("No SPC modules found");
-
-   if (no_of_active_spc == 0)
-   {
-      QMessageBox msgbox(QMessageBox::Warning, "Force SPC card connection?", "Some SPC cards are in use, would you like to try and connect to them anyway?");
-      msgbox.addButton(QMessageBox::Yes);
-      msgbox.addButton(QMessageBox::No);
-
-      if (msgbox.exec() == QMessageBox::Yes)
-         ActivateSPCMCards(module_type, true);
-
-      if (no_of_active_spc == 0)
-         throw std::exception("No compatible SPC modules found");
-   }
-
-   // Get parameters from card
-   CHECK(SPC_get_parameters(act_mod, &spc_dat));
-
-   CHECK(SPC_set_parameter(act_mod, SYNC_THRESHOLD, -16.0));
 
    StartThread();
 }
 
-void BH::Init()
+void Chronologic::CheckCard()
 {
-   cur_flimage = new FLIMage(1, 1, 0, 0, this);
+   // prepare initialization
+   timetagger4_init_parameters params;
+   timetagger4_get_default_init_parameters(&params);
+   params.buffer_size[0] = 8 * 1024 * 1024;	// use 8 MByte as packet buffer
+   params.board_id = 0;						// number copied to "card" field of every packet, allowed range 0..255
+   params.card_index = 0;						// initialize first card found in the system
+   // ordering depends on PCIe slot position if more than one card is present
 
-   // Setup rate timer
-   SPC_clear_rates(act_mod);
-   rate_timer = new QTimer(this);
-   connect(rate_timer, &QTimer::timeout, this, &BH::ReadRates);
-   rate_timer->start(1000);
+   // initialize card
+   int error_code;
+   const char * error_message;
+   device = timetagger4_init(&params, &error_code, &error_message);
+   CHECK(error_code);
 }
 
-
-//============================================================
-// Read rates from the active card
-//============================================================
-rate_values BH::ReadRates()
+void Chronologic::ConfigureCard()
 {
-//   cout << "Pixel Marks: " << pmark << "\n";
-//   pmark = 0;
+   // prepare configuration
+   timetagger4_configuration config;
+   // fill configuration data structure with default values
+   // so that the configuration is valid and only parameters
+   // of interest have to be set explicitly
+   timetagger4_get_default_configuration(device, &config);
 
-   float usage;
-   rate_values rates;
-   SPC_read_rates(act_mod, &rates);
-   SPC_get_fifo_usage(act_mod, &usage);
-   emit RatesUpdated(rates);
-   emit FifoUsageUpdated(usage);
-   return rates;
-}
+   // reset TDC time counter on falling edge of start pulse
+   config.start_rising = 0;
 
-
-/*
-   Activate SPC cards of type module_type, e.g. M_SPC830
-*/
-void BH::ActivateSPCMCards(short module_type, bool force)
-{
-   // Cycle through SPC cards and work out which are ok to use
-   //============================================================
-   SPCModInfo mod_info[MAX_NO_OF_SPC];
-   for (int i = 0; i < MAX_NO_OF_SPC; i++)
+   // set config of the 4 TDC channels, inputs A - D
+   for (int i = 0; i < TIMETAGGER4_TDC_CHANNEL_COUNT; i++)
    {
-      SPC_get_module_info(i, (SPCModInfo *)&mod_info[i]);
-      if (mod_info[i].module_type != M_WRONG_TYPE)
-         total_no_of_spc++;
-      if (mod_info[i].init == INIT_SPC_OK || (mod_info[i].init == INIT_SPC_MOD_IN_USE && force))
-      {
-         no_of_active_spc++; 
-         mod_active[i] = 1;
-         act_mod = i;
-      }
-      else
-         mod_active[i] = 0;
+      // enable recording hits on TDC channel
+      config.channel[i].enabled = 1;
+
+      // measure falling edge
+      config.channel[i].rising = 0;
+
+      // do not filter any hits
+      // fine timestamp is a 30 bit unsigned int
+      config.channel[i].start = 0;				// discard hits with fine timestamp less than start
+      config.channel[i].stop = 0x3fffffff;		// discard hits with fine timestamp more than stop
    }
 
-   // Disable cards of incorrect type
-   //============================================================
-   short work_mode = SPC_get_mode();
-   for (int i = 0; i < MAX_NO_OF_SPC; i++)
+   // generate low active pulse on LEMO output A - D
+   for (int i = 1; i < TIMETAGGER4_TIGER_COUNT; i++)
    {
-      if (mod_active[i])
-      {
-         if (mod_info[i].module_type != module_type)
-         {
-            mod_active[i] = 0;
-            no_of_active_spc--;
-         }
-      }
+      config.tiger_block[i].enable = 0;
+      config.tiger_block[i].start = 2 + i;
+      config.tiger_block[i].stop = 3 + i;
+      config.tiger_block[i].negate = 1;
+      config.tiger_block[i].retrigger = 0;
+      config.tiger_block[i].extend = 0;
+      config.tiger_block[i].enable_lemo_output = 0;
+      config.tiger_block[i].sources = TIMETAGGER4_TRIGGER_SOURCE_AUTO;
    }
 
-   // this will deactivate unused modules in DLL
-   SPC_set_mode(work_mode, force, mod_active);
+   // adjust base line for inputs Start, A - D
+   // default NIM pulses
+   // if TiGeR is used for triggering:
+   // positive pulses: timetagger4_DC_OFFSET_P_LVCMOS_18
+   // negative pulses: timetagger4_DC_OFFSET_N_LVCMOS_18
+   for (int i = 0; i < 5; i++)
+      config.dc_offset[i] = TIMETAGGER4_DC_OFFSET_N_NIM;
+
+   // activate configuration
+   CHECK(timetagger4_configure(device, &config));
 }
 
-
-float BH::GetParameter(short par_id)
+void Chronologic::Init()
 {
-   float par;
-   SPC_get_parameter(act_mod, par_id, &par);
-   return par;
+   FifoTcspc::Init();
 }
 
-void BH::SetParameter(short par_id, float par)
+
+
+void Chronologic::StartModule()
 {
-   SPC_set_parameter(act_mod, par_id, par);
+   // start data capture
+   CHECK(timetagger4_start_capture(device));
+
+   // start timing generator
+   timetagger4_start_tiger(device);
 }
 
-
-void BH::StartModule()
-{
-   CHECK(SPC_set_parameter(act_mod, SCAN_SIZE_X, n_x));
-   CHECK(SPC_set_parameter(act_mod, SCAN_SIZE_Y, n_y));
-
-   // Setup timer
-   //SPC_set_parameter(act_mod, STOP_ON_TIME, 1);
-   //SPC_set_parameter(act_mod, COLLECT_TIME, 20.0);
-
-   // Start BH card
-   CHECK(SPC_start_measurement(act_mod));
-
-   unsigned int spc_header;
-   CHECK(SPC_get_fifo_init_vars(act_mod, NULL, NULL, NULL, &spc_header));
-}
-
-BH::~BH()
+Chronologic::~Chronologic()
 {
    StopFIFO();
 
-   // Deactivate all modules
-   for (int i = 0; i < 8; i++)
-      mod_active[i] = 0;
-
-   SPC_set_mode(SPC_HARD, false, mod_active);
-
+   // deactivate XTDC4
+   timetagger4_close(device);
 }
 
-void BH::WriteFileHeader()
+void Chronologic::WriteFileHeader()
 {
    // Write header
-   quint32 spc_header;
+   quint32 spc_header = 0;
    quint32 magic_number = 0xF1F0;
    quint32 header_size = 4;
    quint32 format_version = 1;
 
-   CHECK(SPC_get_fifo_init_vars(act_mod, NULL, NULL, NULL, &spc_header));
-
    data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
 }
 
-void BH::SetRecording(bool recording_)
+
+
+void Chronologic::ReaderThread()
 {
-   if (recording != recording_)
-   {
-      if (recording_)
-      {
-         StartRecording();
-      }
-      else
-      {
-         recording = false;
-         data_stream.setDevice(nullptr);
-         file.close();
-      }
-   }
 
-   emit RecordingStatusChanged(recording);
-}
+   // configure read behaviour
+   timetagger4_read_in read_config;
+   // automatically acknowledge all data as processed
+   // on the next call to xtdc4_read()
+   // old packet pointers are invalid after calling xtdc4_read()
+   read_config.acknowledge_last_read = 1;
 
-void BH::StartRecording(const QString& specified_file_name)
-{
-   QString file_name = specified_file_name;
+   // structure with packet pointers for read data
+   timetagger4_read_out read_data;
 
-   if (recording)
-      return;
+   // some book keeping
+   int packet_count = 0;
+   int empty_packets = 0;
+   int packets_with_errors = 0;
+   bool last_read_no_data = false;
 
-   if (file_name == "")
-   {
-      QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-      folder.append("/FLIM data.spc");
-      file_name = QFileDialog::getSaveFileName(nullptr, "Choose a file name", folder, "SPC file (*.spc)");
-   }
+   printf("Reading packets:\n");
 
-   if (!file_name.isEmpty())
-   {
-
-      file.setFileName(file_name);
-      file.open(QIODevice::WriteOnly);
-      data_stream.setDevice(&file);
-      data_stream.setByteOrder(QDataStream::LittleEndian);
-
-      if (scanning)
-         WriteFileHeader();
-
-      recording = true;
-   }
-}
-
-
-
-void BH::ReaderThread()
-{
-   short ret = 0; 
+   short ret = 0;
    bool send_stop_command = false;
    while (true)
    {
-      short spc_state;
-      SPC_test_state(act_mod, &spc_state);
+      int status = timetagger4_read(device, &read_config, &read_data);
 
-      if (spc_state & SPC_WAIT_TRG) // wait for trigger 
-         continue;
-
-      if ((spc_state & SPC_FEMPTY) && send_stop_command) // FIFO empty
-         break;
-
-      if (spc_state & SPC_FOVFL)
-         // Fifo overrun occured 
-         //  - macro time information after the overrun is not consistent
-         //    consider to break the measurement and lower photon's rate
-         throw std::exception("FIFO buffer overflowed!");
-
-      if (spc_state & SPC_TIME_OVER & SPC_FEMPTY)
-         break;
-
-      if (!(spc_state & SPC_FEMPTY))
-         ReadPhotons();
+      ReadPackets();
 
       if (terminate && !send_stop_command) // & ((spc_state & SPC_FEMPTY) != 0))
       {
          send_stop_command = true;
-         // Need to do this twice - see BH docs
-         CHECK(SPC_stop_measurement(act_mod));
-         CHECK(SPC_stop_measurement(act_mod));
+         timetagger4_stop_tiger(device);
       }
    }
 
@@ -278,31 +184,34 @@ void BH::ReaderThread()
 
 }
 
-bool BH::ReadPhotons()
+bool Chronologic::ReadPackets()
 {
-   short ret = 0;
+   timetagger4_read_in read_config;
+   read_config.acknowledge_last_read = 1;
+   timetagger4_read_out read_data;
+
+   int status = timetagger4_read(device, &read_config, &read_data);
+
+   if (status > 0)
+      return false;
+
    bool more_to_read = true;
 
-   vector<Photon>& buffer = photon_buffer.GetNextBufferToFill();
+   vector<Photon>& buffer = packet_buffer.GetNextBufferToFill();
 
    int photons_in_buffer = 0;
    size_t buffer_length = buffer.size();
 
    int word_length = 2;
-   int words_per_photon = sizeof(Photon) / word_length;
-
-   unsigned short* ptr = reinterpret_cast<unsigned short*>(buffer.data());
-
+   int packet_size = sizeof(crono_packet);
+   
    while (photons_in_buffer < 0.75 * buffer_length)
    {
-      unsigned long read_size = (buffer_length - photons_in_buffer) * word_length;
+      unsigned long read_size = (static_cast<unsigned long>(buffer_length)-photons_in_buffer) * word_length;
 
-      // before the call read_size contains required number of words to read from fifo
-      // after the call current_cnt contains number of words read from fifo  
-      short ret = SPC_read_fifo(act_mod, &read_size, ptr);
-      
+
       if (recording)
-         data_stream.writeRawData(reinterpret_cast<char*>(ptr), read_size * words_per_photon);
+         data_stream.writeRawData(reinterpret_cast<char*>(ptr), read_size * words_per_packet);
 
       ptr += read_size;
 
@@ -322,11 +231,11 @@ bool BH::ReadPhotons()
    if (photons_in_buffer > 0)
    {
       buffer.resize(photons_in_buffer);
-      photon_buffer.FinishedFillingBuffer();
+      packet_buffer.FinishedFillingBuffer();
    }
    else
    {
-      photon_buffer.FailedToFillBuffer();
+      packet_buffer.FailedToFillBuffer();
    }
 
    return more_to_read;
@@ -339,185 +248,7 @@ bool BH::ReadPhotons()
 // This function is mostly lifted from the use_spcm.c 
 // example file
 //============================================================
-void BH::ConfigureFIFO()
+void Chronologic::ConfigureModule()
 {
-
-   float curr_mode;
-
-   // in most of the modules types with FIFO mode it is possible to stop the fifo measurement 
-   //   after specified Collection time
-   fifo_stopt_possible = 1;
-   short first_write = 1;
-
-
-
-   SPC_get_version(act_mod, &fpga_version);
-
-   // SPC-150 and the newest SPC-140 & SPC-830 can record in FIFO modes 
-   //                   up to 4 external markers events
-   //  predefined mode FIFO32_M is used for Fifo Imaging - it uses markers 0-2 
-   //     as  Pixel, Line & Frame clocks
-   // in normal Fifo mode ( ROUT_OUT ) recording markers 0-3 can be enabled by 
-   //    setting a parameter ROUTING_MODE ( bits 8-11 )
-
-
-   // before the measurement sequencer must be disabled
-   SPC_enable_sequencer(act_mod, 0);
-
-   // set correct measurement mode
-   SPC_get_parameter(act_mod, MODE, &curr_mode);
-
-   /*
-
-   switch (module_type){
-   case M_SPC130:
-      SPC_set_parameter(act_mod, MODE, FIFO130);
-      fifo_type = FIFO_130;
-      fifo_size = 262144;  // 256K 16-bit words
-      if (fpga_version < 0x306)  // < v.C6
-         fifo_stopt_possible = 0;
-      break;
-
-   case M_SPC600:
-   case M_SPC630:
-      SPC_set_parameter(act_mod, MODE, FIFO_32);  // or FIFO_48
-      fifo_type = FIFO_32;  // or FIFO_48
-      fifo_size = 2 * 262144;   // 512K 16-bit words
-      if (fpga_version <= 0x207)  // <= v.B7
-         fifo_stopt_possible = 0;
-      break;
-
-   case M_SPC830:
-      // ROUT_OUT for 830 == fifo
-      // with FPGA v. > CO  also FIFO32_M possible 
-      SPC_set_parameter(act_mod, MODE, FIFO_32M);   // ROUT_OUT in 830 == fifo
-      // or FIFO_32M
-      fifo_type = FIFO_32M;    // or FIFO_IMG
-      fifo_size = 64 * 262144; // 16777216 ( 16M )16-bit words
-      break;
-
-   case M_SPC140:
-      // ROUT_OUT for 140 == fifo
-      // with FPGA v. > BO  also FIFO32_M possible 
-      SPC_set_parameter(act_mod, MODE, ROUT_OUT);   // or FIFO_32M
-      fifo_type = FIFO_140;  // or FIFO_IMG
-      fifo_size = 16 * 262144;  // 4194304 ( 4M ) 16-bit words
-      break;
-
-   case M_SPC150:
-      // ROUT_OUT in 150 == fifo
-      if (curr_mode != ROUT_OUT &&  curr_mode != FIFO_32M){
-         SPC_set_parameter(act_mod, MODE, ROUT_OUT);
-         curr_mode = ROUT_OUT;
-      }
-      fifo_size = 16 * 262144;  // 4194304 ( 4M ) 16-bit words
-      if (curr_mode == ROUT_OUT)
-         fifo_type = FIFO_150;
-      else  // FIFO_IMG ,  marker 3 can be enabled via ROUTING_MODE
-         fifo_type = FIFO_IMG;
-      break;
-
-   }
-
-   unsigned short rout_mode, scan_polarity;
-   float fval;
-
-   // ROUTING_MODE sets active markers and their polarity in Fifo mode (not for FIFO32_M)
-   // bits 8-11 - enable Markers0-3,  bits 12-15 - active edge of Markers0-3
-
-   // SCAN_POLARITY sets markers polarity in FIFO32_M mode
-   SPC_get_parameter(act_mod, SCAN_POLARITY, &fval);
-   scan_polarity = fval;
-   SPC_get_parameter(act_mod, ROUTING_MODE, &fval);
-   rout_mode = fval;
-
-   // enable all markers
-   rout_mode |= (1 << 8 | 1 << 9 | 1 << 10 | 1 << 11);
-
-   // use the same polarity of markers in Fifo_Img and Fifo mode
-   rout_mode &= 0xfff8; 
-   rout_mode |= scan_polarity & 0x7;
-
-   SPC_get_parameter(act_mod, MODE, &curr_mode);
-   if (curr_mode == ROUT_OUT){
-      rout_mode |= 0xf00;     // markers 0-3 enabled
-      SPC_set_parameter(act_mod, ROUTING_MODE, rout_mode);
-   }
-   if (curr_mode == FIFO_32M){
-      rout_mode |= 0x800;     // additionally enable marker 3
-      SPC_set_parameter(act_mod, ROUTING_MODE, rout_mode);
-      SPC_set_parameter(act_mod, SCAN_POLARITY, scan_polarity);
-   }
-
-   */
-
-   // switch off stop_on_overfl
-   SPC_set_parameter(act_mod, STOP_ON_OVFL, 0);
-   SPC_set_parameter(act_mod, STOP_ON_TIME, 0);
-   /*
-   if (fifo_stopt_possible){
-      // if Stop on time is possible, the measurement can be stopped automatically 
-      //     after Collection time
-      /// !!!!!!!!!!!!!!
-      //    the mode = FIFO32_M ( fifo_type = FIFO_IMG ) switches off (in hardware) Stop on time
-      //        in order to make possible finishing current frame
-      //     the measurement will not stop after expiration of collection time
-      //     SPC_test_state sets flag SPC_WAIT_FR in the status - software should still read photons 
-      //       untill next frame marker appears and then should stop the measurement
-      //
-      //   to avoid this behaviour - set mode to normal fifo mode = 1 ( ROUT_OUT)
-      /// !!!!!!!!!!!!!!
-      SPC_set_parameter(act_mod, STOP_ON_TIME, 1);
-      SPC_set_parameter(act_mod, COLLECT_TIME, 10.0); // default  - stop after 10 sec
-   }
-   */
-
-   // there is no need ( and also no way ) to clear FIFO memory before the measurement
-
-   // In FIFO mode the whole SPC memory is a big buffer which is filled with photons.
-   // From the user point of view it works like a fifo - 
-   //     you can read photon frames untill the fifo is empty 
-   //     ( or you reach required number of photons ). 
-   //  If your photon's rate is too high or you don't read photons fast enough, 
-   //    FIFO overrun can happen, 
-   //  it means that photons which were not read before are overwritten with the new ones.
-   //  - macro time information after the overrun is not consistent
-   // The photon's rate border at which overruns can appear depends on:
-   //   - module type ( fifo size ),
-   //   - your experiment ( photon's rate ), 
-   //   - your computer's speed, hard disk, disk cache, operating memory size
-   //   - number of tasks running in the same time
-   //  You can experiment using our measurement software to decide 
-   //       how big memory buffer to use to read photons and when to write to hard disk
-   //  To increase the border :
-   //     - close all unnecessary applications
-   //     - do not write to the hard disk very big amount of data in one piece - 
-   //           it can slow down your measurement loop
-
-   // buffer must be allocated for predefined max number of photons to read in one call
-   // max number of photons to read in one call - hier max_ph_to_read variable
-   // max_ph_to_read should also be defined carefully depending on the same aspects as 
-   //     overrun considerations above
-   // if it is too big - you can block (slow down) your system during reading fifo
-   //    ( for high photons rates)
-   // if it is too small - you can decrease your photon' rate at which overrun occurs
-   //    ( by big overhead for calling DLL function)
-   // user can experiment with max_ph_to_read value to get the best performance of your
-   //    system
-
-   if (module_type == M_SPC830)
-      max_ph_to_read = 2000000; // big fifo, fast DMA readout
-   else
-      max_ph_to_read = 200000;
-
-   if (fifo_type == FIFO_48)
-      max_words_in_buf = 3 * max_ph_to_read;
-   else
-      max_words_in_buf = 2 * max_ph_to_read;
-
-   if (fifo_type == FIFO_48)
-      words_per_phot = 3;
-   else
-      words_per_phot = 2;
 
 }

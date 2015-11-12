@@ -35,8 +35,9 @@ set(SOURCE
 )
 
 set(HEADERS
+   FifoTcspc.h
    FLIMage.h
-   PhotonBuffer.h
+   PacketBuffer.h
    ${BH_HEADERS}
    ${CL_HEADERS}
 )

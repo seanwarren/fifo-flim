@@ -3,7 +3,8 @@
 #include <vector>
 #include "FLIMage.h"
 
-class PhotonBuffer
+template<class T> 
+class PacketBuffer
 {
    typedef
    enum { BufferEmpty, BufferFilling, BufferFilled, BufferProcessing }
@@ -11,11 +12,11 @@ class PhotonBuffer
 
 
 public:
-   PhotonBuffer(int n_buffers, int buffer_length) :
+   PacketBuffer(int n_buffers, int buffer_length) :
       n_buffers(n_buffers), buffer_length(buffer_length)
    {
       // Allocate buffers
-      buffer = std::vector<std::vector<Photon>>(n_buffers, std::vector<Photon>(buffer_length));
+      buffer = std::vector<std::vector<T>>(n_buffers, std::vector<T>(buffer_length));
       buffer_state = std::vector<BufferState>(n_buffers, BufferEmpty);
    }
 
@@ -51,7 +52,7 @@ public:
       buffer_state[fill_idx] = BufferEmpty;
    }
 
-   std::vector<Photon>& GetNextBufferToProcess()
+   std::vector<T>& GetNextBufferToProcess()
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[process_idx] != BufferFilled)
@@ -83,8 +84,8 @@ private:
    int n_buffers;
    int buffer_length;
 
-   std::vector<Photon> empty_buffer;
+   std::vector<T> empty_buffer;
    std::vector<BufferState> buffer_state;
-   std::vector<std::vector<Photon>> buffer;
+   std::vector<std::vector<T>> buffer;
 
 };
