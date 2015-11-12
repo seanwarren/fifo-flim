@@ -10,10 +10,10 @@ using namespace std;
 
 void CHECK(int err)
 {
-   if (err < 0)
+   if (err != 0)
    {
-      std::cout << "Chronologic Error Code: " << err;
-      throw std::exception("Chronologic Error", err);
+      std::string msg = "Chronologic Error Code: " + std::to_string(err);
+      throw std::runtime_error(msg);
    }
 }
 
@@ -132,6 +132,18 @@ void Chronologic::WriteFileHeader()
    data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
 }
 
+void Chronologic::ProcessPhotons()
+{
+   vector<crono_packet>& buffer = packet_buffer.GetNextBufferToProcess();
+
+   if (buffer.empty()) // TODO: use a condition variable here
+      return;
+
+   //for (auto& p : buffer)
+   //   cur_flimage->AddPhotonEvent(p);
+
+   packet_buffer.FinishedProcessingBuffer();
+}
 
 
 void Chronologic::ReaderThread()
@@ -178,7 +190,7 @@ void Chronologic::ReaderThread()
    do
    {
       read_size = 1000;
-      SPC_read_fifo(act_mod, &read_size, reinterpret_cast<unsigned short*>(b.data()));
+      // TODO: read remaining data here
    } while (read_size > 0);
 
 
@@ -197,7 +209,7 @@ bool Chronologic::ReadPackets()
 
    bool more_to_read = true;
 
-   vector<Photon>& buffer = packet_buffer.GetNextBufferToFill();
+   vector<crono_packet>& buffer = packet_buffer.GetNextBufferToFill();
 
    int photons_in_buffer = 0;
    size_t buffer_length = buffer.size();
@@ -210,14 +222,16 @@ bool Chronologic::ReadPackets()
       unsigned long read_size = (static_cast<unsigned long>(buffer_length)-photons_in_buffer) * word_length;
 
 
-      if (recording)
-         data_stream.writeRawData(reinterpret_cast<char*>(ptr), read_size * words_per_packet);
+      //if (recording)
+         // TODO: data_stream.writeRawData(reinterpret_cast<char*>(ptr), read_size * words_per_packet);
 
-      ptr += read_size;
+         //ptr += read_size;
 
-      unsigned long n_photons_read = read_size / words_per_photon;
-      photons_in_buffer += n_photons_read;
-      photons_read += n_photons_read;
+         //unsigned long n_photons_read = read_size / words_per_photon;
+         //photons_in_buffer += n_photons_read;
+         //photons_read += n_photons_read;
+
+         int ret = 0;
 
       if (ret < 0)
          break;

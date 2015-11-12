@@ -1,9 +1,10 @@
-#include "BH.h"
+
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QFileDialog>
 #include <chrono>
 #include <cassert>
+#include "FifoTcspc.h"
 
 using namespace std;
  
@@ -142,16 +143,4 @@ void FifoTcspc::ProcessorThread()
 		ProcessPhotons();
 }
 
-void FifoTcspc::ProcessPhotons()
-{
-	vector<Photon>& buffer = packet_buffer.GetNextBufferToProcess();
-
-	if (buffer.empty()) // TODO: use a condition variable here
-		return;
-
-	for (auto& p : buffer)
-		cur_flimage->AddPhotonEvent(p);
-
-	packet_buffer.FinishedProcessingBuffer();
-}
 

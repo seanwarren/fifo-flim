@@ -23,11 +23,6 @@ public:
 	rate_values ReadRates();
 	void SaveSDT(FLIMage& image, const QString& filename);
 
-signals:
-
-   void RatesUpdated(rate_values rates);
-   void FifoUsageUpdated(float usage);
-
 private:
 
 	void StartModule();
@@ -41,6 +36,7 @@ private:
 
 	bool ReadPhotons(); // return whether there are more photons to read
 	void ReadRemainingPhotonsFromStream();
+   void ProcessPhotons();
 
 	void ActivateSPCMCards(short module_type, bool force_activation = false);
 	float GetParameter(short par_id);

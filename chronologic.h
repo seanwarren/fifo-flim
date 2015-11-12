@@ -29,6 +29,7 @@ private:
    float GetSyncThreshold();
 
    void ReaderThread();
+   void ProcessPhotons();
 
    bool ReadPackets(); // return whether there are more photons to read
    void ReadRemainingPhotonsFromStream();

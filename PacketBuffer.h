@@ -29,7 +29,7 @@ public:
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
    }
 
-   std::vector<Photon>& GetNextBufferToFill()
+   std::vector<T>& GetNextBufferToFill()
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[fill_idx] != BufferEmpty)

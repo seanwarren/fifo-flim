@@ -19,7 +19,7 @@ if(USE_CHRONOLOGIC)
    set(CL_DIR "C:/Program Files/cronologic/xTDC4/driver")
    set(CL_SOURCE chronologic.cpp)
    set(CL_HEADERS chronologic.h)
-   set(CL_LIB ${fifo_flim_LIBS} ${CL_DIR}/xtdc4_driver_64.lib)
+   set(CL_LIB ${fifo_flim_LIBS} ${CL_DIR}/x64/xtdc4_driver_64.lib)
    set(CL_INCLUDE ${CL_DIR}/include)
 endif()
 

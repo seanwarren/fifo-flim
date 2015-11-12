@@ -75,8 +75,11 @@ rate_values BH::ReadRates()
    float usage;
    rate_values rates;
    SPC_read_rates(act_mod, &rates);
+   FlimRates flim_rates(rates.sync_rate, rates.cfd_rate, rates.tac_rate, rates.adc_rate);
+
    SPC_get_fifo_usage(act_mod, &usage);
-   emit RatesUpdated(rates);
+
+   emit RatesUpdated(flim_rates);
    emit FifoUsageUpdated(usage);
    return rates;
 }
@@ -283,6 +286,19 @@ bool BH::ReadPhotons()
    }
 
    return more_to_read;
+}
+
+void BH::ProcessPhotons()
+{
+   vector<Photon>& buffer = packet_buffer.GetNextBufferToProcess();
+
+   if (buffer.empty()) // TODO: use a condition variable here
+      return;
+
+   for (auto& p : buffer)
+      cur_flimage->AddPhotonEvent(p);
+
+   packet_buffer.FinishedProcessingBuffer();
 }
 
 
