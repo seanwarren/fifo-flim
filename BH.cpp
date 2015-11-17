@@ -26,7 +26,7 @@ packet_buffer(PacketBuffer<Photon>(1000, 10000))
    CHECK(SPC_init(ini_name));
 
    // Activate cards and check we've got at least one that works
-   ActivateSPCMCards(module_type);
+   activateSPCMCards(module_type);
 
    if (total_no_of_spc == 0)
       throw std::exception("No SPC modules found");
@@ -38,7 +38,7 @@ packet_buffer(PacketBuffer<Photon>(1000, 10000))
       msgbox.addButton(QMessageBox::No);
 
       if (msgbox.exec() == QMessageBox::Yes)
-         ActivateSPCMCards(module_type, true);
+         activateSPCMCards(module_type, true);
 
       if (no_of_active_spc == 0)
          throw std::exception("No compatible SPC modules found");
@@ -52,14 +52,14 @@ packet_buffer(PacketBuffer<Photon>(1000, 10000))
    StartThread();
 }
 
-void BH::Init()
+void BH::init()
 {
-   FifoTcspc::Init();
+   FifoTcspc::init();
 
    // Setup rate timer
    SPC_clear_rates(act_mod);
    rate_timer = new QTimer(this);
-   connect(rate_timer, &QTimer::timeout, this, &BH::ReadRates);
+   connect(rate_timer, &QTimer::timeout, this, &BH::readRates);
    rate_timer->start(1000);
 }
 
@@ -67,7 +67,7 @@ void BH::Init()
 //============================================================
 // Read rates from the active card
 //============================================================
-rate_values BH::ReadRates()
+rate_values BH::readRates()
 {
 //   cout << "Pixel Marks: " << pmark << "\n";
 //   pmark = 0;
@@ -79,8 +79,8 @@ rate_values BH::ReadRates()
 
    SPC_get_fifo_usage(act_mod, &usage);
 
-   emit RatesUpdated(flim_rates);
-   emit FifoUsageUpdated(usage);
+   emit ratesUpdated(flim_rates);
+   emit fifoUsageUpdated(usage);
    return rates;
 }
 
@@ -88,7 +88,7 @@ rate_values BH::ReadRates()
 /*
    Activate SPC cards of type module_type, e.g. M_SPC830
 */
-void BH::ActivateSPCMCards(short module_type, bool force)
+void BH::activateSPCMCards(short module_type, bool force)
 {
    // Cycle through SPC cards and work out which are ok to use
    //============================================================
@@ -128,20 +128,20 @@ void BH::ActivateSPCMCards(short module_type, bool force)
 }
 
 
-float BH::GetParameter(short par_id)
+float BH::getParameter(short par_id)
 {
    float par;
    SPC_get_parameter(act_mod, par_id, &par);
    return par;
 }
 
-void BH::SetParameter(short par_id, float par)
+void BH::setParameter(short par_id, float par)
 {
    SPC_set_parameter(act_mod, par_id, par);
 }
 
 
-void BH::StartModule()
+void BH::startModule()
 {
    CHECK(SPC_set_parameter(act_mod, SCAN_SIZE_X, n_x));
    CHECK(SPC_set_parameter(act_mod, SCAN_SIZE_Y, n_y));
@@ -159,7 +159,7 @@ void BH::StartModule()
 
 BH::~BH()
 {
-   StopFIFO();
+   stopFIFO();
 
    // Deactivate all modules
    for (int i = 0; i < 8; i++)
@@ -169,7 +169,7 @@ BH::~BH()
 
 }
 
-void BH::WriteFileHeader()
+void BH::writeFileHeader()
 {
    // Write header
    quint32 spc_header;
@@ -184,7 +184,7 @@ void BH::WriteFileHeader()
 
 
 
-void BH::ReaderThread()
+void BH::readerThread()
 {
    short ret = 0; 
    bool send_stop_command = false;
@@ -209,7 +209,7 @@ void BH::ReaderThread()
          break;
 
       if (!(spc_state & SPC_FEMPTY))
-         ReadPhotons();
+         readPhotons();
 
       if (terminate && !send_stop_command) // & ((spc_state & SPC_FEMPTY) != 0))
       {
@@ -220,7 +220,7 @@ void BH::ReaderThread()
       }
    }
 
-   SetRecording(false);
+   setRecording(false);
 
    // Flush the FIFO buffer
    vector<Photon> b(1000);
@@ -234,12 +234,12 @@ void BH::ReaderThread()
 
 }
 
-bool BH::ReadPhotons()
+bool BH::readPhotons()
 {
    short ret = 0;
    bool more_to_read = true;
 
-   vector<Photon>& buffer = packet_buffer.GetNextBufferToFill();
+   vector<Photon>& buffer = packet_buffer.getNextBufferToFill();
 
    int photons_in_buffer = 0;
    size_t buffer_length = buffer.size();
@@ -278,27 +278,27 @@ bool BH::ReadPhotons()
    if (photons_in_buffer > 0)
    {
       buffer.resize(photons_in_buffer);
-      packet_buffer.FinishedFillingBuffer();
+      packet_buffer.finishedFillingBuffer();
    }
    else
    {
-      packet_buffer.FailedToFillBuffer();
+      packet_buffer.failedToFillBuffer();
    }
 
    return more_to_read;
 }
 
-void BH::ProcessPhotons()
+void BH::processPhotons()
 {
-   vector<Photon>& buffer = packet_buffer.GetNextBufferToProcess();
+   vector<Photon>& buffer = packet_buffer.getNextBufferToProcess();
 
    if (buffer.empty()) // TODO: use a condition variable here
       return;
 
    for (auto& p : buffer)
-      cur_flimage->AddPhotonEvent(p);
+      cur_flimage->addPhotonEvent(BHEvent(p));
 
-   packet_buffer.FinishedProcessingBuffer();
+   packet_buffer.finishedProcessingBuffer();
 }
 
 
@@ -308,7 +308,7 @@ void BH::ProcessPhotons()
 // This function is mostly lifted from the use_spcm.c 
 // example file
 //============================================================
-void BH::ConfigureModule()
+void BH::configureModule()
 {
 
    float curr_mode;

@@ -1,4 +1,4 @@
-#include "Chronologic.h"
+#include "Cronologic.h"
 
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -12,23 +12,24 @@ void CHECK(int err)
 {
    if (err != 0)
    {
-      std::string msg = "Chronologic Error Code: " + std::to_string(err);
+      std::string msg = "Cronologic Error Code: " + std::to_string(err);
       throw std::runtime_error(msg);
    }
 }
 
-Chronologic::Chronologic(QObject* parent) :
+Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent),
-packet_buffer(PacketBuffer<crono_packet>(1000, 10000))
+packet_buffer(PacketBuffer<cl_event>(1000, 10000))
 {
-   CheckCard();
-   ConfigureCard();
-
+   checkCard();
+   configureCard();
+   
+   cur_flimage = new FLIMage(1, 1, 0, 8);
 
    StartThread();
 }
 
-void Chronologic::CheckCard()
+void Cronologic::checkCard()
 {
    // prepare initialization
    timetagger4_init_parameters params;
@@ -43,9 +44,27 @@ void Chronologic::CheckCard()
    const char * error_message;
    device = timetagger4_init(&params, &error_code, &error_message);
    CHECK(error_code);
+
+   // print board information
+   timetagger4_static_info staticinfo;
+   timetagger4_get_static_info(device, &staticinfo);
+   printf("Board Serial        : %d.%d\n", staticinfo.board_serial >> 24, staticinfo.board_serial & 0xffffff);
+   printf("Board Configuration : TimeTagger4-");
+   switch (staticinfo.board_configuration&TIMETAGGER4_BOARDCONF_MASK)
+   {
+   case TIMETAGGER4_1G_BOARDCONF:
+      printf("1G\n"); break;
+   case TIMETAGGER4_2G_BOARDCONF:
+      printf("2G\n"); break;
+   default:
+      printf("unknown\n");
+   }
+   printf("Board Revision      : %d\n", staticinfo.board_revision);
+   printf("Firmware Revision   : %d.%d\n", staticinfo.firmware_revision, staticinfo.subversion_revision);
+   printf("Driver Revision     : %d.%d.%d.%d\n", ((staticinfo.driver_revision >> 24) & 255), ((staticinfo.driver_revision >> 16) & 255), ((staticinfo.driver_revision >> 8) & 255), (staticinfo.driver_revision & 255));
 }
 
-void Chronologic::ConfigureCard()
+void Cronologic::configureCard()
 {
    // prepare configuration
    timetagger4_configuration config;
@@ -61,10 +80,14 @@ void Chronologic::ConfigureCard()
    for (int i = 0; i < TIMETAGGER4_TDC_CHANNEL_COUNT; i++)
    {
       // enable recording hits on TDC channel
-      config.channel[i].enabled = 1;
+      config.channel[i].enabled = true;
+
+      config.auto_trigger_period = 0; // TESTING
+      config.auto_trigger_random_exponent = 4; // TESTING
 
       // measure falling edge
-      config.channel[i].rising = 0;
+      config.trigger[i + 1].rising = true;
+      config.trigger[i + 1].falling = true;
 
       // do not filter any hits
       // fine timestamp is a 30 bit unsigned int
@@ -73,9 +96,9 @@ void Chronologic::ConfigureCard()
    }
 
    // generate low active pulse on LEMO output A - D
-   for (int i = 1; i < TIMETAGGER4_TIGER_COUNT; i++)
+   for (int i = 0; i < TIMETAGGER4_TIGER_COUNT; i++)
    {
-      config.tiger_block[i].enable = 0;
+      config.tiger_block[i].enable = true;
       config.tiger_block[i].start = 2 + i;
       config.tiger_block[i].stop = 3 + i;
       config.tiger_block[i].negate = 1;
@@ -85,43 +108,45 @@ void Chronologic::ConfigureCard()
       config.tiger_block[i].sources = TIMETAGGER4_TRIGGER_SOURCE_AUTO;
    }
 
-   // adjust base line for inputs Start, A - D
-   // default NIM pulses
-   // if TiGeR is used for triggering:
-   // positive pulses: timetagger4_DC_OFFSET_P_LVCMOS_18
-   // negative pulses: timetagger4_DC_OFFSET_N_LVCMOS_18
-   for (int i = 0; i < 5; i++)
+   for (int i = 0; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
       config.dc_offset[i] = TIMETAGGER4_DC_OFFSET_N_NIM;
+
+   // start group on falling edges on the start channel
+   config.trigger[0].falling = true;	// enable packet generation on falling edge of start pulse
+   config.trigger[0].rising = false;	// disable packet generation on rising edge of start pulse
+
 
    // activate configuration
    CHECK(timetagger4_configure(device, &config));
+
+   timetagger4_param_info parinfo;
+   timetagger4_get_param_info(device, &parinfo);
+   printf("\nTDC binsize         : %0.2f ps\n", parinfo.binsize);
 }
 
-void Chronologic::Init()
+void Cronologic::init()
 {
-   FifoTcspc::Init();
+   FifoTcspc::init();
 }
 
 
 
-void Chronologic::StartModule()
+void Cronologic::startModule()
 {
+   CHECK(timetagger4_start_tiger(device));
    // start data capture
    CHECK(timetagger4_start_capture(device));
-
-   // start timing generator
-   timetagger4_start_tiger(device);
 }
 
-Chronologic::~Chronologic()
+Cronologic::~Cronologic()
 {
-   StopFIFO();
+   stopFIFO();
 
    // deactivate XTDC4
    timetagger4_close(device);
 }
 
-void Chronologic::WriteFileHeader()
+void Cronologic::writeFileHeader()
 {
    // Write header
    quint32 spc_header = 0;
@@ -132,33 +157,22 @@ void Chronologic::WriteFileHeader()
    data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
 }
 
-void Chronologic::ProcessPhotons()
+void Cronologic::processPhotons()
 {
-   vector<crono_packet>& buffer = packet_buffer.GetNextBufferToProcess();
+   vector<cl_event>& buffer = packet_buffer.getNextBufferToProcess();
 
    if (buffer.empty()) // TODO: use a condition variable here
       return;
 
-   //for (auto& p : buffer)
-   //   cur_flimage->AddPhotonEvent(p);
+   for (auto& p : buffer)
+      cur_flimage->addPhotonEvent(CLEvent(p));
 
-   packet_buffer.FinishedProcessingBuffer();
+   packet_buffer.finishedProcessingBuffer();
 }
 
 
-void Chronologic::ReaderThread()
+void Cronologic::readerThread()
 {
-
-   // configure read behaviour
-   timetagger4_read_in read_config;
-   // automatically acknowledge all data as processed
-   // on the next call to xtdc4_read()
-   // old packet pointers are invalid after calling xtdc4_read()
-   read_config.acknowledge_last_read = 1;
-
-   // structure with packet pointers for read data
-   timetagger4_read_out read_data;
-
    // some book keeping
    int packet_count = 0;
    int empty_packets = 0;
@@ -169,22 +183,18 @@ void Chronologic::ReaderThread()
 
    short ret = 0;
    bool send_stop_command = false;
-   while (true)
+   while (!terminate)
    {
-      int status = timetagger4_read(device, &read_config, &read_data);
-
-      ReadPackets();
-
-      if (terminate && !send_stop_command) // & ((spc_state & SPC_FEMPTY) != 0))
-      {
-         send_stop_command = true;
-         timetagger4_stop_tiger(device);
-      }
+      readPackets();
    }
 
-   SetRecording(false);
+   timetagger4_stop_tiger(device);
+   timetagger4_stop_capture(device);
+
+   setRecording(false);
 
    // Flush the FIFO buffer
+   /*
    vector<Photon> b(1000);
    unsigned long read_size;
    do
@@ -192,67 +202,61 @@ void Chronologic::ReaderThread()
       read_size = 1000;
       // TODO: read remaining data here
    } while (read_size > 0);
-
-
+   */
 }
 
-bool Chronologic::ReadPackets()
+bool Cronologic::readPackets()
 {
+
    timetagger4_read_in read_config;
-   read_config.acknowledge_last_read = 1;
    timetagger4_read_out read_data;
+
+   read_config.acknowledge_last_read = true;
 
    int status = timetagger4_read(device, &read_config, &read_data);
 
    if (status > 0)
       return false;
 
-   bool more_to_read = true;
+   vector<cl_event>& buffer = packet_buffer.getNextBufferToFill();
 
-   vector<crono_packet>& buffer = packet_buffer.GetNextBufferToFill();
-
-   int photons_in_buffer = 0;
    size_t buffer_length = buffer.size();
-
-   int word_length = 2;
-   int packet_size = sizeof(crono_packet);
    
-   while (photons_in_buffer < 0.75 * buffer_length)
+   // iterate over all packets received with the last read
+   int idx = 0;
+   crono_packet* p = read_data.first_packet;
+   while (p <= read_data.last_packet && idx < buffer_length)
    {
-      unsigned long read_size = (static_cast<unsigned long>(buffer_length)-photons_in_buffer) * word_length;
+      int hit_count = 2 * p->length;
+      if (p->flags & TIMETAGGER4_PACKET_FLAG_ODD_HITS)
+         hit_count -= 1;
 
+      uint32_t* packet_data = (uint32_t*)(p->data);
+      for (int i = 0; i < hit_count; i++)
+      {
+         cl_event evt;
+         evt.hit = *(packet_data + i);
+         evt.timestamp = p->timestamp;
 
-      //if (recording)
-         // TODO: data_stream.writeRawData(reinterpret_cast<char*>(ptr), read_size * words_per_packet);
-
-         //ptr += read_size;
-
-         //unsigned long n_photons_read = read_size / words_per_photon;
-         //photons_in_buffer += n_photons_read;
-         //photons_read += n_photons_read;
-
-         int ret = 0;
-
-      if (ret < 0)
-         break;
-      if (read_size == 0)
-         break;
-
-      if (ret == 1)
-         more_to_read = false;
+         buffer[idx++] = evt;
+      }
+      p = crono_next_packet(p);
    }
 
-   if (photons_in_buffer > 0)
+   // if this fails we need to increase the buffer size
+   assert(p == read_data.last_packet);
+
+   if (idx > 0)
    {
-      buffer.resize(photons_in_buffer);
-      packet_buffer.FinishedFillingBuffer();
+      buffer.resize(idx);
+      packet_buffer.finishedFillingBuffer();
    }
    else
    {
-      packet_buffer.FailedToFillBuffer();
+      packet_buffer.failedToFillBuffer();
    }
 
-   return more_to_read;
+   return false;
 }
 
 
@@ -262,7 +266,7 @@ bool Chronologic::ReadPackets()
 // This function is mostly lifted from the use_spcm.c 
 // example file
 //============================================================
-void Chronologic::ConfigureModule()
+void Cronologic::configureModule()
 {
 
 }

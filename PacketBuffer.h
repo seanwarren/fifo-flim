@@ -20,7 +20,7 @@ public:
       buffer_state = std::vector<BufferState>(n_buffers, BufferEmpty);
    }
 
-   void Reset()
+   void reset()
    {
       // Reset buffer contents
       int fill_idx = 0;
@@ -29,7 +29,7 @@ public:
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
    }
 
-   std::vector<T>& GetNextBufferToFill()
+   std::vector<T>& getNextBufferToFill()
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[fill_idx] != BufferEmpty)
@@ -40,19 +40,19 @@ public:
       return buffer[fill_idx];
    }
 
-   void FinishedFillingBuffer()
+   void finishedFillingBuffer()
    {
       // State state of buffer to empty and increment pointer
       buffer_state[fill_idx] = BufferFilled;
       fill_idx = (fill_idx + 1) % n_buffers;
    }
 
-   void FailedToFillBuffer()
+   void failedToFillBuffer()
    {
       buffer_state[fill_idx] = BufferEmpty;
    }
 
-   std::vector<T>& GetNextBufferToProcess()
+   std::vector<T>& getNextBufferToProcess()
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[process_idx] != BufferFilled)
@@ -63,7 +63,7 @@ public:
       return buffer[process_idx];
    }
 
-   void FinishedProcessingBuffer()
+   void finishedProcessingBuffer()
    {
       // Set state of buffer to empty
       buffer_state[process_idx] = BufferEmpty;

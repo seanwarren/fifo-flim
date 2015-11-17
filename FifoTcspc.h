@@ -28,47 +28,47 @@ public:
    FifoTcspc(QObject* parent);
    virtual ~FifoTcspc() {};
 
-   virtual void Init() {};
+   virtual void init() {};
 
-   void SetScanning(bool scanning);
-   void SetImageSize(int n);
-   void StartScanning();
-   void StopScanning();
+   void setScanning(bool scanning);
+   void setImageSize(int n);
+   void startScanning();
+   void stopScanning();
 
-   void SetFrameAccumulation(int frame_accumulation_)
+   void setFrameAccumulation(int frame_accumulation_)
    {
       frame_accumulation = frame_accumulation_;
-      cur_flimage->SetFrameAccumulation(frame_accumulation);
+      //cur_flimage->SetFrameAccumulation(frame_accumulation);
    }
 
-   void SetRecording(bool recording);
-   void StartRecording(const QString& filename = "");
+   void setRecording(bool recording);
+   void startRecording(const QString& filename = "");
 
-   int GetFrameAccumulation() { return frame_accumulation; }
+   int getFrameAccumulation() { return frame_accumulation; }
 
    cv::Mat GetImage();
    cv::Mat GetImageUnsafe();
 
 signals:
 
-   void RecordingStatusChanged(bool recording);
-   void RatesUpdated(FlimRates rates);
-   void FifoUsageUpdated(float usage);
+   void recordingStatusChanged(bool recording);
+   void ratesUpdated(FlimRates rates);
+   void fifoUsageUpdated(float usage);
 
 protected:
 
-   void StartFIFO();
-   void StopFIFO();
+   void startFIFO();
+   void stopFIFO();
 
-   virtual void StartModule() = 0;
-   virtual void ConfigureModule() = 0;
+   virtual void startModule() = 0;
+   virtual void configureModule() = 0;
    
-   void ProcessorThread();
-   virtual void ReaderThread() = 0;
+   void processorThread();
+   virtual void readerThread() = 0;
 
-   virtual void WriteFileHeader() = 0;
+   virtual void writeFileHeader() = 0;
 
-   virtual void ProcessPhotons() = 0;
+   virtual void processPhotons() = 0;
 
    FLIMage* cur_flimage;
 

@@ -14,39 +14,39 @@ FifoTcspc::FifoTcspc(QObject* parent) :
 
 }
 
-void FifoTcspc::SetScanning(bool scanning_)
+void FifoTcspc::setScanning(bool scanning_)
 {
 	if (scanning_ & !scanning)
-		StartScanning();
+		startScanning();
 	else if (!scanning_ & scanning)
-		StopScanning();
+		stopScanning();
 }
 
-void FifoTcspc::StartScanning()
+void FifoTcspc::startScanning()
 {
-	ConfigureModule();
-	StartFIFO();
+	configureModule();
+	startFIFO();
 }
 
-void FifoTcspc::StopScanning()
+void FifoTcspc::stopScanning()
 {
-	StopFIFO();
+	stopFIFO();
 
-	SetRecording(false);
+	setRecording(false);
 
 }
 
 cv::Mat FifoTcspc::GetImage()
 {
-	return cur_flimage->GetIntensity().clone();
+	return cur_flimage->getIntensity().clone();
 }
 
 cv::Mat FifoTcspc::GetImageUnsafe()
 {
-	return cur_flimage->GetIntensity();
+	return cur_flimage->getIntensity();
 }
 
-void FifoTcspc::SetImageSize(int n)
+void FifoTcspc::setImageSize(int n)
 {
 	if (!scanning)
 	{
@@ -56,13 +56,13 @@ void FifoTcspc::SetImageSize(int n)
 }
 
 
-void FifoTcspc::SetRecording(bool recording_)
+void FifoTcspc::setRecording(bool recording_)
 {
 	if (recording != recording_)
 	{
 		if (recording_)
 		{
-			StartRecording();
+			startRecording();
 		}
 		else
 		{
@@ -72,10 +72,10 @@ void FifoTcspc::SetRecording(bool recording_)
 		}
 	}
 
-	emit RecordingStatusChanged(recording);
+	emit recordingStatusChanged(recording);
 }
 
-void FifoTcspc::StartRecording(const QString& specified_file_name)
+void FifoTcspc::startRecording(const QString& specified_file_name)
 {
 	QString file_name = specified_file_name;
 
@@ -98,33 +98,33 @@ void FifoTcspc::StartRecording(const QString& specified_file_name)
 		data_stream.setByteOrder(QDataStream::LittleEndian);
 
 		if (scanning)
-			WriteFileHeader();
+			writeFileHeader();
 
 		recording = true;
 	}
 }
 
 
-void FifoTcspc::StartFIFO()
+void FifoTcspc::startFIFO()
 {
-	StartModule();
+	startModule();
 
-	cur_flimage->Resize(n_x, n_y, spc_header);
-	cur_flimage->SetFrameAccumulation(frame_accumulation);
+	cur_flimage->resize(n_x, n_y, spc_header);
+	cur_flimage->setFrameAccumulation(frame_accumulation);
 
 	if (recording)
-		WriteFileHeader();
+		writeFileHeader();
 
 	terminate = false;
 	scanning = true;
 
 	// Start thread
-   reader_thread = std::thread(&FifoTcspc::ReaderThread, this);
-   processor_thread = std::thread(&FifoTcspc::ProcessorThread, this);
+   reader_thread = std::thread(&FifoTcspc::readerThread, this);
+   processor_thread = std::thread(&FifoTcspc::processorThread, this);
 
 }
 
-void FifoTcspc::StopFIFO()
+void FifoTcspc::stopFIFO()
 {
 	terminate = true;
 
@@ -137,10 +137,10 @@ void FifoTcspc::StopFIFO()
 }
 
 
-void FifoTcspc::ProcessorThread()
+void FifoTcspc::processorThread()
 {
 	while (!terminate)
-		ProcessPhotons();
+		processPhotons();
 }
 
 

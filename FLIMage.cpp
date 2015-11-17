@@ -9,10 +9,10 @@ FLIMage::FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits, QObject* 
    n_bins = 1 << (histogram_bits);
    bit_shift = 12 - histogram_bits;
 
-   Resize(n_x, n_y, sdt_header);
+   resize(n_x, n_y, sdt_header);
 }
 
-void FLIMage::Resize(int n_x_, int n_y_, int sdt_header_)
+void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
 {
    n_x = n_x_;
    n_y = n_y_;
@@ -28,17 +28,17 @@ void FLIMage::Resize(int n_x_, int n_y_, int sdt_header_)
    frame_idx = -1;
 }
 
-bool FLIMage::IsValidPixel()
+bool FLIMage::isValidPixel()
 {
    return (frame_idx >= 0) && (cur_x >= 0) && (cur_x < n_x) && (cur_y >= 0) && (cur_y < n_x);
 }
 
-void FLIMage::AddPhotonEvent(Photon p)
+void FLIMage::addPhotonEvent(const TcspcEvent& p)
 {
-   photon_events.push_back(p);
-   PhotonInfo photon(p);
+   //photon_events.push_back(p);
+   //PhotonInfo photon(p);
 
-   if (photon.IsPixelClock())
+   if (p.isPixelClock())
    {
       cur_x++;
 
@@ -48,14 +48,14 @@ void FLIMage::AddPhotonEvent(Photon p)
          std::cout << "Extra pixel!\n";
       }
 
-      if (IsValidPixel() && (frame_idx % frame_accumulation == 0))
+      if (isValidPixel() && (frame_idx % frame_accumulation == 0))
       {
          intensity.at<quint16>(cur_x, cur_y) = 0;
          sum_time.at<float>(cur_x, cur_y) = 0;
          mean_arrival_time.at<float>(cur_x, cur_y) = 0;
       }
    }
-   if (photon.IsLineClock())
+   if (p.isLineClock())
    {
       cur_x = -1;
       cur_y++;
@@ -66,7 +66,7 @@ void FLIMage::AddPhotonEvent(Photon p)
          std::cout << "Extra line!\n";
       }
    }
-   if (photon.IsFrameClock())
+   if (p.isFrameClock())
    {
       // Check if we're finished an image
       if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
@@ -80,23 +80,23 @@ void FLIMage::AddPhotonEvent(Photon p)
       cur_y = -1;
    }
 
-   if (photon.IsValidPhoton() && IsValidPixel()) // is a photon
+   if (p.isValidPhoton() && isValidPixel()) // is a photon
    {
       float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));
-      float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += photon.adc);
+      float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += p.micro_time);
       mean_arrival_time.at<float>(cur_x, cur_y) = p_sum_time / p_intensity;
 
       if (construct_histogram)
       {
-         int bin = photon.adc >> bit_shift;
+         int bin = p.micro_time >> bit_shift;
          cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
       }
    }
 }
 
-void FLIMage::WriteSPC(std::string filename)
+void FLIMage::writeSPC(std::string filename)
 {
    std::ofstream os(filename, std::ofstream::out | std::ofstream::binary);
    os << sdt_header;
-   os.write(reinterpret_cast<char*>(photon_events.data()), photon_events.size() * sizeof(Photon));
+   //os.write(reinterpret_cast<char*>(photon_events.data()), photon_events.size() * sizeof(Photon));
 }
