@@ -5,11 +5,30 @@
 #include "FLIMage.h"
 #include "FifoTcspc.h"
 
+#define MARK_PHOTON 0x0
+#define MARK_PIXEL  0x1
+#define MARK_LINE   0x2
+#define MARK_FRAME  0x4
+
 struct cl_event 
 {
-   uint32_t hit;
-   uint64_t timestamp;
+   uint32_t hit_fast;
+   uint64_t hit_slow;
 };
+
+inline
+QDataStream& operator <<(QDataStream &out, const cl_event &c)
+{
+   out << c.hit_fast << c.hit_slow;
+   return out;
+}
+
+inline
+QDataStream& operator >>(QDataStream &in, cl_event &c)
+{
+   in >> c.hit_fast >> c.hit_slow;
+   return in;
+}
 
 class Cronologic : public FifoTcspc
 {
@@ -40,9 +59,15 @@ private:
    bool readPackets(); // return whether there are more photons to read
    void readRemainingPhotonsFromStream();
 
+   PacketBuffer<cl_event> packet_buffer;
+
+
    timetagger4_device* device;
 
-   PacketBuffer<cl_event> packet_buffer;
+   double bin_size_ps;
+   double coarse_factor_ps;
+
+   double last_mark_rising_time = 0;
 };
 
 
@@ -55,28 +80,25 @@ public:
    */
    CLEvent(cl_event evt)
    {
-      uint32_t p = evt.hit;
+      uint32_t p = evt.hit_fast;
+      uint64_t s = evt.hit_slow;
 
       channel = readBits(p, 4);
       flags = readBits(p, 4);
       micro_time = readBits(p, 24);
+
+      mark = readBits(s, 4);
+      macro_time = readBits(s, 60);
    }
 
-   bool isPixelClock() const { return false; } // TODO
-   bool isLineClock() const { return false; } // TODO 
-   bool isFrameClock() const { return false; } // TODO
-   bool isValidPhoton() const { return channel < 4; }
+   bool isPixelClock() const { return mark & MARK_PIXEL; } // TODO
+   bool isLineClock() const { return mark & MARK_LINE; } // TODO 
+   bool isFrameClock() const { return mark & MARK_LINE; } // TODO
+   bool isValidPhoton() const { return mark & MARK_PHOTON; }
 
-   int flags;
+   uint32_t flags;
+   int64_t macro_time;
 
 private:
 
-   int readBits(uint32_t& p, int n_bits)
-   {
-      int mask = (1 << n_bits) - 1;
-      int value = p & mask;
-      p = p >> n_bits;
-
-      return value;
-   }
 };

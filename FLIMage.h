@@ -17,6 +17,19 @@ public:
    uint macro_time;
    uint micro_time;
    uint channel;
+   uint mark;
+
+protected:
+
+   template<class T>
+   int readBits(T& p, int n_bits)
+   {
+      int mask = (1 << n_bits) - 1;
+      int value = p & mask;
+      p = p >> n_bits;
+
+      return value;
+   }
 };
 
 

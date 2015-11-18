@@ -20,6 +20,7 @@ public:
    float adc;
 };
 
+
 class FifoTcspc : public ImageSource
 {
    Q_OBJECT

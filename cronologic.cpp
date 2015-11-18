@@ -26,6 +26,8 @@ packet_buffer(PacketBuffer<cl_event>(1000, 10000))
    
    cur_flimage = new FLIMage(1, 1, 0, 8);
 
+   coarse_factor_ps = 5000.0 / 3; // 1.6666 ns from docs
+
    StartThread();
 }
 
@@ -157,6 +159,7 @@ void Cronologic::writeFileHeader()
    data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
 }
 
+
 void Cronologic::processPhotons()
 {
    vector<cl_event>& buffer = packet_buffer.getNextBufferToProcess();
@@ -167,8 +170,13 @@ void Cronologic::processPhotons()
    for (auto& p : buffer)
       cur_flimage->addPhotonEvent(CLEvent(p));
 
+   if (recording)
+      for (auto& p : buffer)
+         data_stream << p;
+
    packet_buffer.finishedProcessingBuffer();
 }
+
 
 
 void Cronologic::readerThread()
@@ -231,14 +239,53 @@ bool Cronologic::readPackets()
       if (p->flags & TIMETAGGER4_PACKET_FLAG_ODD_HITS)
          hit_count -= 1;
 
+      int ignore = false;
       uint32_t* packet_data = (uint32_t*)(p->data);
       for (int i = 0; i < hit_count; i++)
       {
          cl_event evt;
-         evt.hit = *(packet_data + i);
-         evt.timestamp = p->timestamp;
+         evt.hit_fast = *(packet_data + i);
 
-         buffer[idx++] = evt;
+         uint64_t hit_slow = p->timestamp << 4;
+
+         // If channel == 4 then we've got a marker not a photon
+         // We determine what kind of marker based on the duration 
+         // of the marker, i.e. time between rising and falling edge
+         if ((evt.hit_fast & 0xF) == 4) 
+         {
+            // Is the marker the rising or falling edge?
+            bool rising = evt.hit_fast & 0x10;
+
+            // Get arrival time of edge
+            double micro_time = (evt.hit_fast >> 8) * bin_size_ps;
+            double macro_time = p->timestamp * coarse_factor_ps;
+            double time = micro_time + macro_time;
+
+            if (rising)
+            {
+               // We don't want to include rising edge in data stream
+               last_mark_rising_time = time;
+               ignore = true;
+            }
+            else
+            {
+               uint64_t marker = 0;
+               double marker_length = time - last_mark_rising_time;
+               if (marker_length < 20e4)
+                  marker = MARK_PIXEL;
+               else if (marker_length < 40e4)
+                  marker = MARK_LINE;
+               else
+                  marker = MARK_FRAME;
+
+               hit_slow = hit_slow | marker;
+            }
+         }
+
+         evt.hit_slow = hit_slow;
+   
+         if (!ignore)
+            buffer[idx++] = evt;
       }
       p = crono_next_packet(p);
    }
