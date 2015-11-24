@@ -91,10 +91,10 @@ public:
       macro_time = readBits(s, 60);
    }
 
-   bool isPixelClock() const { return mark & MARK_PIXEL; } // TODO
-   bool isLineClock() const { return mark & MARK_LINE; } // TODO 
-   bool isFrameClock() const { return mark & MARK_LINE; } // TODO
-   bool isValidPhoton() const { return mark & MARK_PHOTON; }
+   bool isPixelClock() const { return mark & MARK_PIXEL; }
+   bool isLineClock() const { return mark & MARK_LINE; }  
+   bool isFrameClock() const { return mark & MARK_FRAME; } 
+   bool isValidPhoton() const { return mark == MARK_PHOTON; }
 
    uint32_t flags;
    int64_t macro_time;

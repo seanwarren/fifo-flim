@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ImageSource.h"
+#include "ParametricImageSource.h"
 #include "PacketBuffer.h"
 #include <QObject>
 #include <QDataStream>
@@ -21,7 +21,7 @@ public:
 };
 
 
-class FifoTcspc : public ImageSource
+class FifoTcspc : public ParametricImageSource
 {
    Q_OBJECT
 
@@ -49,6 +49,8 @@ public:
 
    cv::Mat GetImage();
    cv::Mat GetImageUnsafe();
+
+   FLIMage** getPreviewFLIMage() { return &cur_flimage; };
 
 signals:
 

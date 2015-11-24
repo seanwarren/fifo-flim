@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTime>
 #include <cv.h>
 #include <iostream>
 #include <fstream>
@@ -52,6 +53,11 @@ public:
 
    void writeSPC(std::string filename);
    
+   std::vector<uint>& getCurrentDecay() { return decay; }
+
+signals:
+   void decayUpdated();
+
 protected:
 
    bool isValidPixel();
@@ -73,4 +79,11 @@ protected:
 //   std::vector<Photon> photon_events;
    std::vector<quint16> cur_histogram;
    std::list<std::vector<quint16>> image_histograms;
+
+   std::vector<uint> decay;
+   std::vector<uint> next_decay;
+
+   QTime next_refresh;
+
+   const int refresh_time_ms = 200;
 };

@@ -30,6 +30,7 @@ add_definitions(${QT_DEFINITIONS})
 set(SOURCE
    FLIMage.cpp
    FifoTcspc.cpp
+   SimTcspc.cpp
    ${BH_SOURCE}
    ${CL_SOURCE}
 )
@@ -38,6 +39,7 @@ set(HEADERS
    FifoTcspc.h
    FLIMage.h
    PacketBuffer.h
+   SimTcspc.h
    ${BH_HEADERS}
    ${CL_HEADERS}
 )

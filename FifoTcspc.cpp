@@ -9,7 +9,7 @@
 using namespace std;
  
 FifoTcspc::FifoTcspc(QObject* parent) :
-	ImageSource(parent)
+	ParametricImageSource(parent)
 {
 
 }

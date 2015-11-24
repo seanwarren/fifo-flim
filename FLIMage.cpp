@@ -9,7 +9,12 @@ FLIMage::FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits, QObject* 
    n_bins = 1 << (histogram_bits);
    bit_shift = 12 - histogram_bits;
 
+   decay.resize(n_bins, 0);
+   next_decay.resize(n_bins, 0);
+
    resize(n_x, n_y, sdt_header);
+
+   next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
 }
 
 void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
@@ -85,6 +90,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));
       float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += p.micro_time);
       mean_arrival_time.at<float>(cur_x, cur_y) = p_sum_time / p_intensity;
+      next_decay[p.micro_time]++;
 
       if (construct_histogram)
       {
@@ -92,6 +98,15 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
       }
    }
+
+   if (QTime::currentTime() > next_refresh)
+   {
+      decay = next_decay;
+      std::fill(next_decay.begin(), next_decay.end(), 0);
+      next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
+      emit decayUpdated();
+   }
+
 }
 
 void FLIMage::writeSPC(std::string filename)
