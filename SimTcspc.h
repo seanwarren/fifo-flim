@@ -16,20 +16,6 @@ struct sim_event
    uint8_t mark;
 };
 
-inline
-QDataStream& operator <<(QDataStream &out, const sim_event &c)
-{
-   out << c.micro_time << c.channel << c.mark;
-   return out;
-}
-
-inline
-QDataStream& operator >>(QDataStream &in, sim_event &c)
-{
-   in >> c.micro_time >> c.channel >> c.mark;
-   return in;
-}
-
 class SimTcspc : public FifoTcspc
 {
    Q_OBJECT

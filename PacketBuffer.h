@@ -29,7 +29,10 @@ public:
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[fill_idx] != BufferEmpty)
-         throw std::runtime_error("Buffer overflowed!");
+      {
+         qWarning("Internal buffer overflowed");
+         return empty_buffer;
+      }
 
       // Get buffer and increment index of next buffer
       buffer_state[fill_idx] = BufferFilling;
