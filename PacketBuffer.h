@@ -33,7 +33,7 @@ public:
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[fill_idx] != BufferEmpty)
-         throw std::exception("Buffer overflowed!");
+         throw std::runtime_error("Buffer overflowed!");
 
       // Get buffer and increment index of next buffer
       buffer_state[fill_idx] = BufferFilling;

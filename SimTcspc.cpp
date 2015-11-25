@@ -116,7 +116,7 @@ bool SimTcspc::readPackets()
    double N = abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
 
    std::poisson_distribution<int> N_dist(N);
-   int channel = 1;
+   uint8_t channel = 1;
 
    int idx = 0;
    int n = N_dist(generator);
