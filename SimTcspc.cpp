@@ -75,38 +75,17 @@ void SimTcspc::processPhotons()
 
 void SimTcspc::readerThread()
 {
-   // some book keeping
-   int packet_count = 0;
-   int empty_packets = 0;
-   int packets_with_errors = 0;
-   bool last_read_no_data = false;
-
-   printf("Reading packets:\n");
-
-   short ret = 0;
-   bool send_stop_command = false;
    while (!terminate)
    {
       readPackets();
    }
 
    setRecording(false);
-
-   // Flush the FIFO buffer
-   /*
-   vector<Photon> b(1000);
-   unsigned long read_size;
-   do
-   {
-   read_size = 1000;
-   // TODO: read remaining data here
-   } while (read_size > 0);
-   */
 }
 
 bool SimTcspc::readPackets()
 {
-   QThread::usleep(1);
+   QThread::usleep(10);
 
    vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
 

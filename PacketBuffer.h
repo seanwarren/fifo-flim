@@ -22,10 +22,6 @@ public:
 
    void reset()
    {
-      // Reset buffer contents
-      int fill_idx = 0;
-      int process_idx = 0;
-
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
    }
 
