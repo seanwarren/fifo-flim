@@ -113,11 +113,8 @@ bool SimTcspc::readPackets()
    size_t buffer_length = buffer.size();
 
 
-   double N = abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 10 + 50;
+   double N = abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
 
-   double tau = 3000;
-   std::exponential_distribution<double> exp_dist(1/tau);
-   std::normal_distribution<double> irf_dist(1000, 100);
    std::poisson_distribution<int> N_dist(N);
    int channel = 1;
 
@@ -145,6 +142,11 @@ bool SimTcspc::readPackets()
    }
 
    buffer[idx++] = { 0, 0, MARK_PIXEL };
+
+   double tau = static_cast<double>(cur_px) / n_px * 4000 + 500;
+   std::exponential_distribution<double> exp_dist(1 / tau);
+   std::normal_distribution<double> irf_dist(1000, 100);
+
 
    for (int i = 0; i < n; i++)
    {  

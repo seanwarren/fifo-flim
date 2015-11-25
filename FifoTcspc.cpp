@@ -11,7 +11,6 @@ using namespace std;
 FifoTcspc::FifoTcspc(QObject* parent) :
 	ParametricImageSource(parent)
 {
-
 }
 
 void FifoTcspc::setScanning(bool scanning_)

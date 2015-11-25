@@ -24,9 +24,9 @@ void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
    sdt_header = sdt_header_;
 
    cur_histogram.resize(n_x * n_y * n_bins);
-   intensity = cv::Mat(n_x, n_y, CV_16U);
-   sum_time = cv::Mat(n_x, n_y, CV_32F);
-   mean_arrival_time = cv::Mat(n_x, n_y, CV_32F);
+   intensity = cv::Mat(n_x, n_y, CV_16U, cvScalar(0));
+   sum_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
+   mean_arrival_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
 
    cur_x = -1;
    cur_y = -1;
