@@ -41,6 +41,8 @@ public:
 	void init();
 	void saveSDT(FLIMage& image, const QString& filename);
 
+   bool readPackets(std::vector<cl_event>& buffer); // return whether any packets were read
+
 private:
 
    void checkCard();
@@ -48,18 +50,12 @@ private:
 
    void startModule();
    void configureModule();
+   void stopModule();
 
-   void writeFileHeader();
    void setSyncThreshold(float threshold);
    float getSyncThreshold();
 
-   void readerThread();
-   void processPhotons();
-
-   bool readPackets(); // return whether there are more photons to read
    void readRemainingPhotonsFromStream();
-
-   PacketBuffer<cl_event> packet_buffer;
 
 
    timetagger4_device* device;

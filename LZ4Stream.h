@@ -51,7 +51,7 @@ public:
          
          char* ring_ptr = ring_buf.data() + cur_pos_ring;
          
-         const size_t cmp_bytes = LZ4_compress_HC_continue(stream, ring_ptr, cmp_buf.data(), msg_bytes, cmp_buf_bytes);
+         const size_t cmp_bytes = LZ4_compress_HC_continue(stream, ring_ptr, cmp_buf.data(), (int)msg_bytes, (int)cmp_buf_bytes);
          output_device->write(cmp_buf.data(), cmp_bytes);
          
          remaining_bytes -= msg_bytes;

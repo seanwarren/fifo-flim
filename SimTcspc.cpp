@@ -13,8 +13,7 @@ using namespace std;
 SimTcspc::SimTcspc(QObject* parent) :
 FifoTcspc(parent)
 {
-   auto read_fcn = std::bind(&SimTcspc::readPackets, this, std::placeholders::_1);
-   processor = new EventProcessorPrivate<SimEvent, sim_event>(read_fcn, 10000, 2000);
+   processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
 
    n_x = n_px;
    n_y = n_px;
@@ -44,7 +43,7 @@ SimTcspc::~SimTcspc()
 
 bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
 {
-   QThread::usleep(50);
+   QThread::usleep(500);
 
    size_t buffer_length = buffer.size();
 
@@ -55,7 +54,7 @@ bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
    uint8_t channel = 1;
 
    int idx = 0;
-   int n = N_dist(generator);
+   size_t n = N_dist(generator);
 
    if (n > buffer_length - 5)
       n = buffer_length - 5;

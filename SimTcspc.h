@@ -26,6 +26,7 @@ public:
 
    void init();
    void saveSDT(FLIMage& image, const QString& filename);
+   bool readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
 
 private:
 
@@ -35,7 +36,6 @@ private:
    void setSyncThreshold(float threshold);
    float getSyncThreshold();
 
-   bool readPackets(std::vector<sim_event>& buffer); // return whether there are more photons to read
    void readRemainingPhotonsFromStream();
 
    int n_px = 64;

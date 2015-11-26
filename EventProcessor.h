@@ -53,8 +53,6 @@ protected:
 template<class Event, typename evt>
 class EventProcessorPrivate : public EventProcessor
 {
-public:
-
    typedef std::function<bool(std::vector<evt>& buffer)> ReaderFcn;
 
    EventProcessorPrivate(ReaderFcn reader_fcn, int n_buffers, int buffer_length) :
@@ -72,7 +70,18 @@ protected:
 
    PacketBuffer<evt> packet_buffer;
    ReaderFcn reader_fcn;
+
+    template<class Provider, class Event, typename evt>
+    friend EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
 };
+
+template<class Provider, class Event, typename evt>
+EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length)
+{
+   auto read_fcn = std::bind(&Provider::readPackets, obj, std::placeholders::_1);
+   return new EventProcessorPrivate<Event, evt>(read_fcn, n_buffers, buffer_length);
+}
+
 
 
 template<class Event, typename evt>
@@ -87,7 +96,7 @@ void EventProcessorPrivate<Event, evt>::readerThread()
 {
    while (running)
    {
-      vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
+      std::vector<evt>& buffer = packet_buffer.getNextBufferToFill();
 
       if (!buffer.empty()) // failed to get buffer
       {
@@ -128,7 +137,7 @@ void EventProcessorPrivate<Event,evt>::processPhotons()
 #pragma omp section
 
       if (recording)
-         lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(sim_event));
+         lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(evt));
 
    }
 

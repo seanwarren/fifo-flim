@@ -18,15 +18,18 @@ void CHECK(int err)
 }
 
 Cronologic::Cronologic(QObject* parent) :
-FifoTcspc(parent),
-packet_buffer(PacketBuffer<cl_event>(1000, 10000))
+FifoTcspc(parent)
 {
+   processor = createEventProcessor<Cronologic, CLEvent, cl_event>(this, 100, 10000);
+
    checkCard();
    configureCard();
    
    cur_flimage = new FLIMage(1, 1, 0, 8);
 
    coarse_factor_ps = 5000.0 / 3; // 1.6666 ns from docs
+
+   processor->setFLIMage(cur_flimage);
 
    StartThread();
 }
@@ -140,6 +143,13 @@ void Cronologic::startModule()
    CHECK(timetagger4_start_capture(device));
 }
 
+void Cronologic::stopModule()
+{
+   CHECK(timetagger4_stop_tiger(device));
+   CHECK(timetagger4_stop_capture(device));
+
+}
+
 Cronologic::~Cronologic()
 {
    stopFIFO();
@@ -148,72 +158,8 @@ Cronologic::~Cronologic()
    timetagger4_close(device);
 }
 
-void Cronologic::writeFileHeader()
-{
-   // Write header
-   quint32 spc_header = 0;
-   quint32 magic_number = 0xF1F0;
-   quint32 header_size = 4;
-   quint32 format_version = 1;
 
-   data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
-}
-
-
-void Cronologic::processPhotons()
-{
-   vector<cl_event>& buffer = packet_buffer.getNextBufferToProcess();
-
-   if (buffer.empty()) // TODO: use a condition variable here
-      return;
-
-   for (auto& p : buffer)
-      cur_flimage->addPhotonEvent(CLEvent(p));
-
-   if (recording)
-      for (auto& p : buffer)
-         data_stream << p;
-
-   packet_buffer.finishedProcessingBuffer();
-}
-
-
-
-void Cronologic::readerThread()
-{
-   // some book keeping
-   int packet_count = 0;
-   int empty_packets = 0;
-   int packets_with_errors = 0;
-   bool last_read_no_data = false;
-
-   printf("Reading packets:\n");
-
-   short ret = 0;
-   bool send_stop_command = false;
-   while (!terminate)
-   {
-      readPackets();
-   }
-
-   timetagger4_stop_tiger(device);
-   timetagger4_stop_capture(device);
-
-   setRecording(false);
-
-   // Flush the FIFO buffer
-   /*
-   vector<Photon> b(1000);
-   unsigned long read_size;
-   do
-   {
-      read_size = 1000;
-      // TODO: read remaining data here
-   } while (read_size > 0);
-   */
-}
-
-bool Cronologic::readPackets()
+bool Cronologic::readPackets(std::vector<cl_event>& buffer)
 {
 
    timetagger4_read_in read_config;
@@ -225,8 +171,6 @@ bool Cronologic::readPackets()
 
    if (status > 0)
       return false;
-
-   vector<cl_event>& buffer = packet_buffer.getNextBufferToFill();
 
    size_t buffer_length = buffer.size();
    
@@ -296,11 +240,11 @@ bool Cronologic::readPackets()
    if (idx > 0)
    {
       buffer.resize(idx);
-      packet_buffer.finishedFillingBuffer();
+      return true;
    }
    else
    {
-      packet_buffer.failedToFillBuffer();
+      return false;
    }
 
    return false;

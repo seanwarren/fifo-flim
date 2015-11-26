@@ -93,7 +93,9 @@ void FifoTcspc::stopFIFO()
 {
 
    processor->stop();
-	
+
+   stopModule();
+
 	scanning = false;
 }
 

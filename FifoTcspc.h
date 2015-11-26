@@ -65,8 +65,9 @@ protected:
    void startFIFO();
    void stopFIFO();
 
-   virtual void startModule() = 0;
    virtual void configureModule() = 0;
+   virtual void startModule() {};
+   virtual void stopModule() {};
    
 
    FLIMage* cur_flimage;
