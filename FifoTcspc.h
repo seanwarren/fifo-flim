@@ -6,6 +6,7 @@
 #include <QDataStream>
 #include <thread>
 #include <QFile> 
+#include "LZ4Stream.h"
 
 class FlimRates
 {
@@ -94,6 +95,8 @@ protected:
    QString file_name;
    QFile file;
    QDataStream data_stream;
+   LZ4Stream lz4_stream;
+   
    bool recording = false;
    int spc_header = 0;
 

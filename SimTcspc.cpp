@@ -65,8 +65,9 @@ void SimTcspc::processPhotons()
    }
 
    if (recording)
-      for (auto& p : buffer)
-         data_stream << p;
+      lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(sim_event));
+   //   for (auto& p : buffer)
+   //      data_stream << p;
 
    packet_buffer.finishedProcessingBuffer();
 }
@@ -85,7 +86,7 @@ void SimTcspc::readerThread()
 
 bool SimTcspc::readPackets()
 {
-   QThread::usleep(10);
+   QThread::usleep(500);
 
    vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
 

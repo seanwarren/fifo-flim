@@ -95,7 +95,8 @@ void FifoTcspc::startRecording(const QString& specified_file_name)
 		file.open(QIODevice::WriteOnly);
 		data_stream.setDevice(&file);
 		data_stream.setByteOrder(QDataStream::LittleEndian);
-
+      lz4_stream.setDevice(&file);
+      
 		if (scanning)
 			writeFileHeader();
 
