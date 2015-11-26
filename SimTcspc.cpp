@@ -12,7 +12,7 @@ using namespace std;
 
 SimTcspc::SimTcspc(QObject* parent) :
 FifoTcspc(parent),
-packet_buffer(PacketBuffer<sim_event>(10000, 2000))
+packet_buffer(PacketBuffer<sim_event>(1000, 2000))
 {
    n_x = n_px;
    n_y = n_px;
@@ -89,6 +89,9 @@ bool SimTcspc::readPackets()
    QThread::usleep(500);
 
    vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
+
+   if (buffer.empty()) // failed to get buffer
+      return false;
 
    size_t buffer_length = buffer.size();
 
