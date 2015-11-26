@@ -56,18 +56,23 @@ void SimTcspc::processPhotons()
 
    if (buffer.empty()) // TODO: use a condition variable here
       return;
-   
-   for (auto& p : buffer)
+
+#pragma omp parallel sections num_threads(2)
    {
-      auto evt = SimEvent(p);
-      cur_flimage->addPhotonEvent(evt);
+
+      for (auto& p : buffer)
+      {
+         auto evt = SimEvent(p);
+         cur_flimage->addPhotonEvent(evt);
+
+      }
+
+#pragma omp section
+
+      if (recording)
+         lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(sim_event));
 
    }
-
-   if (recording)
-      lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(sim_event));
-   //   for (auto& p : buffer)
-   //      data_stream << p;
 
    packet_buffer.finishedProcessingBuffer();
 }
@@ -86,7 +91,7 @@ void SimTcspc::readerThread()
 
 bool SimTcspc::readPackets()
 {
-   QThread::usleep(500);
+   QThread::usleep(50);
 
    vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
 

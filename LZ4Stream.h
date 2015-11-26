@@ -1,9 +1,13 @@
 #pragma once
 
 #include "lz4.h"
+#include "lz4hc.h"
+
 #include <vector>
 #include <algorithm>
 #include <QIODevice>
+
+
 
 class LZ4Stream
 {
@@ -11,11 +15,18 @@ public:
    LZ4Stream(QIODevice* output_device = nullptr) :
       output_device(output_device)
    {
-      stream = LZ4_createStream();
+      stream = LZ4_createStreamHC();
+      LZ4_resetStreamHC(stream, compression_level);
+
       cmp_buf_bytes = LZ4_COMPRESSBOUND(max_message_bytes);
       
       cmp_buf.resize(cmp_buf_bytes);
       ring_buf.resize(ring_buffer_bytes);
+   }
+
+   ~LZ4Stream()
+   {
+      LZ4_freeStreamHC(stream);
    }
    
    void setDevice(QIODevice* output_device_) { output_device = output_device_; }
@@ -40,7 +51,7 @@ public:
          
          char* ring_ptr = ring_buf.data() + cur_pos_ring;
          
-         const int cmp_bytes = LZ4_compress_fast_continue(stream, ring_ptr, cmp_buf.data(), msg_bytes, cmp_buf_bytes, 1);
+         const int cmp_bytes = LZ4_compress_HC_continue(stream, ring_ptr, cmp_buf.data(), msg_bytes, cmp_buf_bytes);
          output_device->write(cmp_buf.data(), cmp_bytes);
          
          remaining_bytes -= msg_bytes;
@@ -54,9 +65,10 @@ public:
    
 protected:
    
-   LZ4_stream_t* stream;
+   LZ4_streamHC_t* stream;
    const size_t max_message_bytes = 1024;
-   const size_t ring_buffer_bytes = 1024 * 1024;
+   const size_t ring_buffer_bytes = 65 * 1024;
+   const size_t compression_level = 2;
    size_t cmp_buf_bytes;
    std::vector<char> cmp_buf;
    std::vector<char> ring_buf;

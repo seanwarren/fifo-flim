@@ -8,6 +8,12 @@ option(USE_CRONOLOGIC FALSE)
 find_package(Qt5Widgets REQUIRED)
 find_package(OpenCV REQUIRED)
 
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 if(USE_BECKER_HICKL)
    set(BH_DIR "C:/Program Files (x86)/BH/SPCM/DLL")
    set(BH_SOURCE BH.cpp)
@@ -32,6 +38,7 @@ set(SOURCE
    FifoTcspc.cpp
    SimTcspc.cpp
    lz4.c
+   lz4hc.c
    ${BH_SOURCE}
    ${CL_SOURCE}
 )
@@ -42,6 +49,7 @@ set(HEADERS
    PacketBuffer.h
    SimTcspc.h
    lz4.h
+   lz4hc.h
    LZ4Stream.h
    ${BH_HEADERS}
    ${CL_HEADERS}
