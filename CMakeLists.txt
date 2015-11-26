@@ -37,6 +37,7 @@ set(SOURCE
    FLIMage.cpp
    FifoTcspc.cpp
    SimTcspc.cpp
+   EventProcessor.cpp
    lz4.c
    lz4hc.c
    ${BH_SOURCE}
@@ -48,6 +49,7 @@ set(HEADERS
    FLIMage.h
    PacketBuffer.h
    SimTcspc.h
+   EventProcessor.h
    lz4.h
    lz4hc.h
    LZ4Stream.h

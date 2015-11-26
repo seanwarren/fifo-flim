@@ -57,51 +57,21 @@ void FifoTcspc::setImageSize(int n)
 
 void FifoTcspc::setRecording(bool recording_)
 {
-	if (recording != recording_)
+	if (processor->isRecording() != recording_)
 	{
 		if (recording_)
-		{
-			startRecording();
-		}
+			processor->startRecording();
 		else
-		{
-			recording = false;
-			data_stream.setDevice(nullptr);
-			file.close();
-		}
+         processor->stopRecording();
 	}
 
-	emit recordingStatusChanged(recording);
+   emit recordingStatusChanged(processor->isRecording());
 }
 
-void FifoTcspc::startRecording(const QString& specified_file_name)
+
+void FifoTcspc::startRecording(const QString& filename)
 {
-	QString file_name = specified_file_name;
-
-	if (recording)
-		return;
-
-	if (file_name == "")
-	{
-		QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-		folder.append("/FLIM data.spc");
-		file_name = QFileDialog::getSaveFileName(nullptr, "Choose a file name", folder, "SPC file (*.spc)");
-	}
-
-	if (!file_name.isEmpty())
-	{
-
-		file.setFileName(file_name);
-		file.open(QIODevice::WriteOnly);
-		data_stream.setDevice(&file);
-		data_stream.setByteOrder(QDataStream::LittleEndian);
-      lz4_stream.setDevice(&file);
-      
-		if (scanning)
-			writeFileHeader();
-
-		recording = true;
-	}
+   processor->startRecording(filename);
 }
 
 
@@ -109,38 +79,23 @@ void FifoTcspc::startFIFO()
 {
 	startModule();
 
-	cur_flimage->resize(n_x, n_y, spc_header);
+	cur_flimage->resize(n_x, n_y, 0);
 	cur_flimage->setFrameAccumulation(frame_accumulation);
 
-	if (recording)
-		writeFileHeader();
-
-	terminate = false;
 	scanning = true;
 
 	// Start thread
-   reader_thread = std::thread(&FifoTcspc::readerThread, this);
-   processor_thread = std::thread(&FifoTcspc::processorThread, this);
+   processor->start();
 
 }
 
 void FifoTcspc::stopFIFO()
 {
-	terminate = true;
 
-	if (reader_thread.joinable())
-		reader_thread.join();
-	if (processor_thread.joinable())
-		processor_thread.join();
-
+   processor->stop();
+	
 	scanning = false;
 }
 
-
-void FifoTcspc::processorThread()
-{
-	while (!terminate)
-		processPhotons();
-}
 
 

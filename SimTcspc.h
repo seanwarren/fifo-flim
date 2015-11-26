@@ -32,17 +32,11 @@ private:
    void startModule();
    void configureModule();
 
-   void writeFileHeader();
    void setSyncThreshold(float threshold);
    float getSyncThreshold();
 
-   void readerThread();
-   void processPhotons();
-
-   bool readPackets(); // return whether there are more photons to read
+   bool readPackets(std::vector<sim_event>& buffer); // return whether there are more photons to read
    void readRemainingPhotonsFromStream();
-
-   PacketBuffer<sim_event> packet_buffer;
 
    int n_px = 64;
    int n_bits = 8;

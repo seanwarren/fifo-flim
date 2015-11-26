@@ -11,13 +11,16 @@ using namespace std;
 
 
 SimTcspc::SimTcspc(QObject* parent) :
-FifoTcspc(parent),
-packet_buffer(PacketBuffer<sim_event>(1000, 2000))
+FifoTcspc(parent)
 {
+   auto read_fcn = std::bind(&SimTcspc::readPackets, this, std::placeholders::_1);
+   processor = new EventProcessorPrivate<SimEvent, sim_event>(read_fcn, 10000, 2000);
+
    n_x = n_px;
    n_y = n_px;
 
    cur_flimage = new FLIMage(n_px, n_px, 0, n_bits);
+   processor->setFLIMage(cur_flimage);
    StartThread();
 }
 
@@ -38,65 +41,10 @@ SimTcspc::~SimTcspc()
 {
 }
 
-void SimTcspc::writeFileHeader()
-{
-   // Write header
-   quint32 spc_header = 0;
-   quint32 magic_number = 0xF1F0;
-   quint32 header_size = 4;
-   quint32 format_version = 1;
 
-   data_stream << magic_number << header_size << format_version << n_x << n_y << spc_header;
-}
-
-
-void SimTcspc::processPhotons()
-{
-   vector<sim_event>& buffer = packet_buffer.getNextBufferToProcess();
-
-   if (buffer.empty()) // TODO: use a condition variable here
-      return;
-
-#pragma omp parallel sections num_threads(2)
-   {
-
-      for (auto& p : buffer)
-      {
-         auto evt = SimEvent(p);
-         cur_flimage->addPhotonEvent(evt);
-
-      }
-
-#pragma omp section
-
-      if (recording)
-         lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(sim_event));
-
-   }
-
-   packet_buffer.finishedProcessingBuffer();
-}
-
-
-
-void SimTcspc::readerThread()
-{
-   while (!terminate)
-   {
-      readPackets();
-   }
-
-   setRecording(false);
-}
-
-bool SimTcspc::readPackets()
+bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
 {
    QThread::usleep(50);
-
-   vector<sim_event>& buffer = packet_buffer.getNextBufferToFill();
-
-   if (buffer.empty()) // failed to get buffer
-      return false;
 
    size_t buffer_length = buffer.size();
 
@@ -153,14 +101,13 @@ bool SimTcspc::readPackets()
    if (idx > 0)
    {
       buffer.resize(idx);
-      packet_buffer.finishedFillingBuffer();
+      return true;
    }
    else
    {
-      packet_buffer.failedToFillBuffer();
+      return false;
    }
 
-   return false;
 }
 
 

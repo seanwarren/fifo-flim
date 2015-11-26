@@ -51,7 +51,7 @@ public:
          
          char* ring_ptr = ring_buf.data() + cur_pos_ring;
          
-         const int cmp_bytes = LZ4_compress_HC_continue(stream, ring_ptr, cmp_buf.data(), msg_bytes, cmp_buf_bytes);
+         const size_t cmp_bytes = LZ4_compress_HC_continue(stream, ring_ptr, cmp_buf.data(), msg_bytes, cmp_buf_bytes);
          output_device->write(cmp_buf.data(), cmp_bytes);
          
          remaining_bytes -= msg_bytes;
@@ -68,7 +68,7 @@ protected:
    LZ4_streamHC_t* stream;
    const size_t max_message_bytes = 1024;
    const size_t ring_buffer_bytes = 65 * 1024;
-   const size_t compression_level = 2;
+   const int compression_level = 2;
    size_t cmp_buf_bytes;
    std::vector<char> cmp_buf;
    std::vector<char> ring_buf;
