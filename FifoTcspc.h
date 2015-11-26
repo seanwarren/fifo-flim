@@ -41,7 +41,6 @@ public:
    void setFrameAccumulation(int frame_accumulation_)
    {
       frame_accumulation = frame_accumulation_;
-      //cur_flimage->SetFrameAccumulation(frame_accumulation);
    }
 
    void startRecording(const QString& filename);

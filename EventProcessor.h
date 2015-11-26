@@ -126,19 +126,21 @@ void EventProcessorPrivate<Event,evt>::processPhotons()
 
 #pragma omp parallel sections num_threads(2)
    {
-
-      for (auto& p : buffer)
+      // SECTION 1: Process for live display
       {
-         auto evt = Event(p);
-         flimage->addPhotonEvent(evt);
+         for (auto& p : buffer)
+         {
+            auto evt = Event(p);
+            flimage->addPhotonEvent(evt);
 
+         }
       }
-
 #pragma omp section
-
-      if (recording)
-         lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(evt));
-
+      // SECTION 2: Write to disk
+      {
+         if (recording)
+            lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(evt));
+      }
    }
 
    packet_buffer.finishedProcessingBuffer();

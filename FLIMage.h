@@ -10,15 +10,16 @@
 class TcspcEvent
 {
 public:
-   virtual bool isPixelClock() const = 0;
-   virtual bool isLineClock() const = 0;
-   virtual bool isFrameClock() const = 0;
-   virtual bool isValidPhoton() const = 0;
+
+   static const uchar Photon     = 0;
+   static const uchar PixelClock = 1;
+   static const uchar LineClock  = 2;
+   static const uchar FrameClock = 4;
 
    uint macro_time;
    uint micro_time;
    uint channel;
-   uint mark;
+   uchar mark;
 
 protected:
 

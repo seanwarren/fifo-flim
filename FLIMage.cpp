@@ -43,7 +43,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
    //photon_events.push_back(p);
    //PhotonInfo photon(p);
 
-   if (p.isPixelClock())
+   if (p.mark & TcspcEvent::PixelClock)
    {
       cur_x++;
 
@@ -60,7 +60,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          mean_arrival_time.at<float>(cur_x, cur_y) = 0;
       }
    }
-   if (p.isLineClock())
+   if (p.mark & TcspcEvent::LineClock)
    {
       cur_x = -1;
       cur_y++;
@@ -71,7 +71,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          std::cout << "Extra line!\n";
       }
    }
-   if (p.isFrameClock())
+   if (p.mark & TcspcEvent::FrameClock)
    {
       // Check if we're finished an image
       if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
@@ -85,7 +85,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       cur_y = -1;
    }
 
-   if (p.isValidPhoton() && isValidPixel()) // is a photon
+   if ((p.mark == TcspcEvent::Photon) && isValidPixel()) // is a photon
    {
       float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));
       float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += p.micro_time);
