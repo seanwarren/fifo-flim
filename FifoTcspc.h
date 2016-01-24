@@ -9,6 +9,13 @@
 #include "LZ4Stream.h"
 #include "EventProcessor.h"
 
+#define MARK_PHOTON     0x0
+#define MARK_PIXEL      0x1
+#define MARK_LINE_START 0x2
+#define MARK_LINE_END   0x4
+#define MARK_FRAME      0x8
+
+
 class FlimRates
 {
 public:

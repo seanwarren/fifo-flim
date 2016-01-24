@@ -4,11 +4,6 @@
 #include "FifoTcspc.h"
 #include <random>
 
-#define MARK_PHOTON 0x0
-#define MARK_PIXEL  0x1
-#define MARK_LINE   0x2
-#define MARK_FRAME  0x4
-
 struct sim_event
 {
    uint32_t micro_time;
@@ -62,7 +57,8 @@ public:
    }
 
    bool isPixelClock() const { return mark & MARK_PIXEL; }
-   bool isLineClock() const { return mark & MARK_LINE; }
+   bool isLineStartClock() const { return mark & MARK_LINE_START; }
+   bool isLineEndClock() const { return mark & MARK_LINE_END; }
    bool isFrameClock() const { return mark & MARK_FRAME; }
    bool isValidPhoton() const { return mark == MARK_PHOTON; }
 };

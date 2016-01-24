@@ -4,7 +4,7 @@ FLIMage::FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits, QObject* 
    QObject(parent)   
 {
    histogram_bits = std::min(histogram_bits, 12);
-   construct_histogram = histogram_bits >= 0;
+   //construct_histogram = histogram_bits >= 0;
 
    n_bins = 1 << (histogram_bits);
    bit_shift = 12 - histogram_bits;
@@ -28,13 +28,15 @@ void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
    sum_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
    mean_arrival_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
 
-   cur_x = -1;
-   cur_y = -1;
-   frame_idx = -1;
+   if ((n_x == 1) && (n_y == 1))
+      cur_x = cur_y = frame_idx = 0;
+   else
+      cur_x = cur_y = frame_idx = -1;
 }
 
 bool FLIMage::isValidPixel()
 {
+   if ((n_x == 0) && (n_y == 1)) return true;
    return (frame_idx >= 0) && (cur_x >= 0) && (cur_x < n_x) && (cur_y >= 0) && (cur_y < n_x);
 }
 
@@ -46,12 +48,6 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
    if (p.mark & TcspcEvent::PixelClock)
    {
       cur_x++;
-
-      if (cur_x >= n_x)
-      {
-         cur_x = n_x - 1;
-         std::cout << "Extra pixel!\n";
-      }
 
       if (isValidPixel() && (frame_idx % frame_accumulation == 0))
       {
@@ -77,14 +73,20 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
       {
          image_histograms.push_back(cur_histogram);
-         std::fill(cur_histogram.begin(), cur_histogram.end(), 0);
+         size_t sz = cur_histogram.size();
+         for (int i = 0; i < sz; i++)
+            cur_histogram[i] = 0;
       }
 
       frame_idx++;
       cur_x = -1;
       cur_y = -1;
    }
-
+   /*
+   cur_x = 0;
+   cur_y = 0;
+   frame_idx = 0;
+   */
    if ((p.mark == TcspcEvent::Photon) && isValidPixel()) // is a photon
    {
       float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));

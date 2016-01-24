@@ -86,5 +86,5 @@ protected:
 
    QTime next_refresh;
 
-   const int refresh_time_ms = 200;
+   const int refresh_time_ms = 1000;
 };

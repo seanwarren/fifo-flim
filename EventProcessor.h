@@ -53,7 +53,7 @@ protected:
 template<class Event, typename evt>
 class EventProcessorPrivate : public EventProcessor
 {
-   typedef std::function<bool(std::vector<evt>& buffer)> ReaderFcn;
+   typedef std::function<size_t(std::vector<evt>& buffer)> ReaderFcn;
 
    EventProcessorPrivate(ReaderFcn reader_fcn, int n_buffers, int buffer_length) :
       packet_buffer(n_buffers, buffer_length),
@@ -88,7 +88,41 @@ template<class Event, typename evt>
 void EventProcessorPrivate<Event, evt>::processorThread()
 {
    while (running)
-      processPhotons();
+   {
+
+      size_t n = packet_buffer.getProcessingBufferSize();
+      
+      if (n == 0) // TODO: use a condition variable here
+      {
+         QThread::usleep(100);
+         continue;
+      }
+      
+      vector<evt> buffer = packet_buffer.getNextBufferToProcess();
+      
+      
+//#pragma omp parallel sections num_threads(2)
+      {
+         // SECTION 1: Process for live display
+         {
+            for (int i = 0; i < n; i++)
+            {
+               auto evt = Event(buffer[i]);
+               flimage->addPhotonEvent(evt);
+
+            }
+         }
+//#pragma omp section
+         // SECTION 2: Write to disk
+         {
+            if (recording)
+               lz4_stream.write(reinterpret_cast<char*>(buffer.data()), n*sizeof(evt));
+         }
+      }
+
+      packet_buffer.finishedProcessingBuffer();
+
+   }
 }
 
 template<class Event, typename evt>
@@ -101,16 +135,16 @@ void EventProcessorPrivate<Event, evt>::readerThread()
       if (!buffer.empty()) // failed to get buffer
       {
 
-         bool filled = reader_fcn(buffer);
+         size_t n_read = reader_fcn(buffer);
 
-         if (filled)
-            packet_buffer.finishedFillingBuffer();
+         if (n_read > 0)
+            packet_buffer.finishedFillingBuffer(n_read);
          else
             packet_buffer.failedToFillBuffer();
       }
       else
       {
-         QThread::msleep(100);
+         //QThread::msleep(100);
       }
    }
 }
@@ -119,30 +153,6 @@ void EventProcessorPrivate<Event, evt>::readerThread()
 template<class Event, typename evt>
 void EventProcessorPrivate<Event,evt>::processPhotons()
 {
-   vector<evt>& buffer = packet_buffer.getNextBufferToProcess();
 
-   if (buffer.empty()) // TODO: use a condition variable here
-      return;
-
-#pragma omp parallel sections num_threads(2)
-   {
-      // SECTION 1: Process for live display
-      {
-         for (auto& p : buffer)
-         {
-            auto evt = Event(p);
-            flimage->addPhotonEvent(evt);
-
-         }
-      }
-#pragma omp section
-      // SECTION 2: Write to disk
-      {
-         if (recording)
-            lz4_stream.write(reinterpret_cast<char*>(buffer.data()), buffer.size()*sizeof(evt));
-      }
-   }
-
-   packet_buffer.finishedProcessingBuffer();
 };
 

@@ -77,8 +77,6 @@ void FifoTcspc::startRecording(const QString& filename)
 
 void FifoTcspc::startFIFO()
 {
-	startModule();
-
 	cur_flimage->resize(n_x, n_y, 0);
 	cur_flimage->setFrameAccumulation(frame_accumulation);
 
@@ -87,6 +85,7 @@ void FifoTcspc::startFIFO()
 	// Start thread
    processor->start();
 
+   startModule();
 }
 
 void FifoTcspc::stopFIFO()

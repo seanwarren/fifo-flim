@@ -67,12 +67,12 @@ bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
       {
          cur_py = 0;
          buffer[idx++] = { 0, 0, MARK_FRAME };
-         buffer[idx++] = { 0, 0, MARK_LINE };
+         buffer[idx++] = { 0, 0, MARK_LINE_START };
       }
       else
       {
          cur_py++;
-         buffer[idx++] = { 0, 0, MARK_LINE };
+         buffer[idx++] = { 0, 0, MARK_LINE_START };
       }
    }
 
