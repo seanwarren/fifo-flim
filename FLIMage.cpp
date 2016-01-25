@@ -32,7 +32,9 @@ void FLIMage::resize(int n_x_, int n_y_)
    if ((n_x == 1) && (n_y == 1))
       cur_x = cur_y = frame_idx = 0;
    else
-      cur_x = cur_y = frame_idx = -1;
+      cur_x = cur_y = -1;
+
+   std::cout << "Resize: " << n_x << " x " << n_y << "\n";
 }
 
 bool FLIMage::isValidPixel()
@@ -42,14 +44,16 @@ bool FLIMage::isValidPixel()
       return (line_active)    && 
              (frame_idx >= 0) && 
              (cur_x >= 0)     && 
-             (cur_x <  n_x)   && 
+             (cur_x < n_x)   && 
              (cur_y >= 0)     && 
-             (cur_y <  n_y);
+             (cur_y < n_y);
    else
       return (line_active) &&
              (frame_idx >= 1) &&
+             (cur_x >= 0) &&
+             (cur_x < n_x) &&
              (cur_y >= 0) &&
-             (cur_y <  n_y);
+             (cur_y < n_y);
 
 }
 
@@ -60,7 +64,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
 
    if (frame_idx >= 0)
    {
-      if (p.mark & TcspcEvent::PixelMarker)
+      if ((p.mark & TcspcEvent::PixelMarker) && using_pixel_markers)
       {
          cur_x++;
 
@@ -83,10 +87,11 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
 
       if (p.mark & TcspcEvent::LineEndMarker)
       {
-         auto this_line_duration = p.macro_time - line_start_time;
+         uint64_t this_line_duration = p.macro_time - line_start_time;
          frame_duration += this_line_duration;
 
          line_active = false;
+         num_end++;
       }
    }
    
@@ -101,47 +106,59 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
             cur_histogram[i] = 0;
       }
 
-      if (!using_pixel_markers && frame_idx >= 0)
+      if ((using_pixel_markers==false) && (frame_idx > 0))
       {
          int measured_lines = cur_y + 1;
+         line_duration = static_cast<double>(frame_duration) / measured_lines;
+
          if ((measured_lines != n_y) || (measured_lines != n_x))
             resize(measured_lines, measured_lines);
 
-         line_duration = static_cast<double>(frame_duration) / (cur_y + 1);
          frame_duration = 0;
       }
 
       frame_idx++;
       cur_x = -1;
       cur_y = -1;
+      num_end = -1;
    }
 
-   if ((p.mark == TcspcEvent::Photon) && isValidPixel()) // is a photon
+   if (p.mark == TcspcEvent::Photon)
    {
-      if (!using_pixel_markers && n_x > 1)
+      if (!using_pixel_markers && (n_x > 1))
       {
          cur_x = ((p.macro_time - line_start_time) * n_x) / line_duration;
-         assert(cur_x >= 0);
-         assert(cur_x < n_x);
       }
 
-      int tx = cur_x;
-      int ty = cur_y;
-      if ((n_x == 1) && (n_y == 1))
+      if (isValidPixel()) // is a photon
       {
-         tx = 0;
-         ty = 0;
-      }
 
-      float p_intensity = (++intensity.at<quint16>(tx, ty));
-      float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
-      mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity;
-      next_decay[p.channel][p.micro_time]++;
+         int tx = cur_x;
+         int ty = cur_y;
+         if ((n_x == 1) && (n_y == 1))
+         {
+            tx = 0;
+            ty = 0;
+         }
 
-      if (construct_histogram)
-      {
-         int bin = p.micro_time >> bit_shift;
-         cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
+         if (p.channel < n_chan)
+         {
+            assert(tx < n_x);
+            assert(ty < n_y);
+            assert(tx >= 0);
+            assert(ty >= 0);
+
+            float p_intensity = (++intensity.at<quint16>(tx, ty));
+            float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
+            mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity;
+            next_decay[p.channel][p.micro_time]++;
+         }
+
+         if (construct_histogram)
+         {
+            int bin = p.micro_time >> bit_shift;
+            cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
+         }
       }
    }
 

@@ -18,22 +18,23 @@ public:
       FrameMarker = 8
    };
 
-   uint macro_time;
-   uint micro_time;
-   uint channel;
+   uint64_t macro_time;
+   uint32_t micro_time;
+   uchar channel;
    uchar mark;
 
 protected:
 
    template<class T>
-   int readBits(T& p, int n_bits)
+   T readBits(T& p, long n_bits)
    {
-      int mask = (1 << n_bits) - 1;
-      int value = p & mask;
+      T mask = (1LL << n_bits) - 1;
+      T value = p & mask;
       p = p >> n_bits;
 
       return value;
    }
+
 };
 
 class FLIMage : public QObject
@@ -43,8 +44,8 @@ public:
 
    FLIMage(int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
 
-   cv::Mat& getIntensity() { return intensity; }
-   cv::Mat& getMeanArrivalTime() { return mean_arrival_time; }
+   cv::Mat getIntensity() { return intensity; }
+   cv::Mat getMeanArrivalTime() { return mean_arrival_time; }
    int getNumChannels() { return n_chan; }
 
    void addPhotonEvent(const TcspcEvent& p);
@@ -69,10 +70,11 @@ protected:
    int line_active = false;
    int frame_idx = -1;
    int frame_accumulation = 1;
+   int num_end = -1;
 
-   long long line_start_time = 0;
+   uint64_t line_start_time = 0;
    double line_duration = 1;
-   long long frame_duration = 0;
+   double frame_duration = 0;
 
    bool construct_histogram = false;
    int n_bins = 0;
@@ -94,4 +96,5 @@ protected:
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;
+
 };

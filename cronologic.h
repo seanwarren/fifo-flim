@@ -43,7 +43,7 @@ private:
 
    double bin_size_ps;
    
-   double last_mark_rise_time = -1;
+   uint64_t last_mark_rise_time = -1;
    int n_line = 0;
    int n_pixel = 0;
    bool line_active = false;
@@ -56,9 +56,7 @@ class CLEvent : public TcspcEvent
 {
 public:
 
-   /*
-   Interpret photon data based on B&H manual p485
-   */
+
    CLEvent(cl_event evt)
    {
       uint32_t p = evt.hit_fast;
@@ -79,7 +77,6 @@ public:
    bool isValidPhoton() const { return mark == MARK_PHOTON; }
 
    uint32_t flags;
-   int64_t macro_time;
 
 private:
 

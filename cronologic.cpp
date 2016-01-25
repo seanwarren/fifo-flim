@@ -25,7 +25,7 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   cur_flimage = new FLIMage(5);
+   cur_flimage = new FLIMage(5, 3);
 
    processor->setFLIMage(cur_flimage);
 
@@ -214,7 +214,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          packet_count++;
          */
          uint64_t hit_slow = p->timestamp;
-         hit_slow = hit_slow << 4;
+         hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
 
          int ignore = false;
          uint32_t* packet_data = (uint32_t*)(p->data);
@@ -223,6 +223,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
             cl_event evt;
             evt.hit_fast = *(packet_data + i);
+            uint64_t marker = 0;
 
             // If channel == 3 then we've got a marker not a photon
             // We determine what kind of marker based on the duration 
@@ -234,9 +235,9 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                
                // Get arrival time of edge
                int hit_fast = evt.hit_fast;
-               double micro_time = (hit_fast >> 8) * bin_size_ps;
-               double macro_time = p->timestamp * bin_size_ps; // coarse_factor_ps / 4;
-               double time = micro_time + macro_time;
+               uint64_t micro_time = (hit_fast >> 8);
+               uint64_t macro_time = p->timestamp; // coarse_factor_ps / 4;
+               uint64_t time = micro_time + macro_time;
 
                if (first_macro_time < 0)
                   first_macro_time = p->timestamp;
@@ -252,11 +253,10 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                }  
                else
                {
-                  uint64_t marker = 0;
                   {
-                     double marker_length = time - last_mark_rise_time;
+                     uint64_t marker_length_i = time - last_mark_rise_time;
+                     double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
 
-//                     std::cout << "Marker Length: " << (int)(marker_length / 1000) << "\n";
                      if (marker_length < 30e3)
                      {
                         if (line_active)
@@ -265,14 +265,14 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                            n_pixel++;
                         }
                      }
-                     else if (marker_length < 100e3)
+                     else if (marker_length < 160e3)
                      {
-                        marker = MARK_FRAME;
+                        marker = MARK_FRAME; // 154
                         n_line = 0;
                      }
                      else if (marker_length < 180e3)
                      {
-                        marker = MARK_LINE_END;
+                        marker = MARK_LINE_END; // 166
                         line_active = false;
                      }
                      else if (marker_length < 210e3)
@@ -282,15 +282,13 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                         n_line++;
                         n_pixel = 0;
                      }
-
-                     hit_slow = hit_slow | marker;
                   }
                   
                  last_mark_rise_time = -1;
                }
             }
 
-            evt.hit_slow = hit_slow;
+            evt.hit_slow = hit_slow | marker;
 
             if (!ignore)
                 buffer[idx++] = evt;
