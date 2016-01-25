@@ -7,15 +7,23 @@
 #include <fstream>
 
 
+#define MarkPhoton  0
+#define MarkPixelClock 1
+#define MarkLineStartClock 2
+#define MarkLineEndClock 4
+#define MarkFrameClock 8
+
 class TcspcEvent
 {
 public:
-
-   static const uchar Photon     = 0;
-   static const uchar PixelClock = 1;
-   static const uchar LineClock  = 2;
-   static const uchar FrameClock = 4;
-
+   
+   /*
+   const static uchar Photon = 0;
+   const static uchar PixelClock = 1;
+   const static uchar LineStartClock = 2;
+   const static uchar LineEndClock = 4;
+   const static uchar FrameClock = 8;
+   */
    uint macro_time;
    uint micro_time;
    uint channel;
@@ -34,15 +42,13 @@ protected:
    }
 };
 
-
-
 class FLIMage : public QObject
 {
    Q_OBJECT
 public:
 
    FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits = 0, QObject* parent = 0);
-   void resize(int n_x, int n_y, int sdt_header);
+   void resize(int n_x, int n_y, int sdt_header = 0);
 
    cv::Mat& getIntensity() { return intensity; }
    cv::Mat& getMeanArrivalTime() { return mean_arrival_time; }
@@ -65,8 +71,13 @@ protected:
 
    int n_x = 1, n_y = 1;
    int cur_x = -1, cur_y = -1;
+   int line_active = false;
    int frame_idx = -1;
    int frame_accumulation = 1;
+
+   long long line_start_time = 0;
+   double line_duration = 1;
+   long long frame_duration = 0;
 
    bool construct_histogram = false;
    int n_bins = 0;
@@ -77,7 +88,6 @@ protected:
    cv::Mat mean_arrival_time;
 
    short sdt_header;
-//   std::vector<Photon> photon_events;
    std::vector<quint16> cur_histogram;
    std::list<std::vector<quint16>> image_histograms;
 
@@ -87,4 +97,6 @@ protected:
    QTime next_refresh;
 
    const int refresh_time_ms = 1000;
+
+   bool using_pixel_markers = false;
 };

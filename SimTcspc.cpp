@@ -41,7 +41,7 @@ SimTcspc::~SimTcspc()
 }
 
 
-bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
+size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
 {
    QThread::usleep(500);
 
@@ -66,17 +66,21 @@ bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
       if (cur_py >= (n_px - 1))
       {
          cur_py = 0;
-         buffer[idx++] = { 0, 0, MARK_FRAME };
-         buffer[idx++] = { 0, 0, MARK_LINE_START };
+         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_END };
+         cur_macro_time += inter_frame_duration; 
+         buffer[idx++] = { cur_macro_time, 0, 0, MARK_FRAME };
+         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_START };
       }
       else
       {
          cur_py++;
-         buffer[idx++] = { 0, 0, MARK_LINE_START };
+         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_END };
+         cur_macro_time += inter_line_duration;
+         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_START };
       }
    }
 
-   buffer[idx++] = { 0, 0, MARK_PIXEL };
+   //buffer[idx++] = { 0, 0, MARK_PIXEL };
 
    double tau = static_cast<double>(cur_px) / n_px * 4000 + 500;
    std::exponential_distribution<double> exp_dist(1 / tau);
@@ -89,24 +93,16 @@ bool SimTcspc::readPackets(std::vector<sim_event>& buffer)
       double t = exp_dist(generator) + irf_dist(generator);
       t = modf(t / T, &intpart);
 
-      uint32_t g = static_cast<int>(t * 256);
+      uint32_t micro_time = static_cast<int>(t * 256);
+      uint64_t macro_time = cur_macro_time + (i * pixel_duration) / n;
 
-      buffer[idx++] = { g, channel, MARK_PHOTON };
+      buffer[idx++] = { macro_time, micro_time, channel, MARK_PHOTON };
    }
 
+   cur_macro_time += pixel_duration;
    cur_px++;
 
-
-   if (idx > 0)
-   {
-      buffer.resize(idx);
-      return true;
-   }
-   else
-   {
-      return false;
-   }
-
+   return idx;
 }
 
 

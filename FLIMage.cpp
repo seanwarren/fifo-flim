@@ -37,7 +37,19 @@ void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
 bool FLIMage::isValidPixel()
 {
    if ((n_x == 0) && (n_y == 1)) return true;
-   return (frame_idx >= 0) && (cur_x >= 0) && (cur_x < n_x) && (cur_y >= 0) && (cur_y < n_x);
+   if (using_pixel_markers)
+      return (line_active)    && 
+             (frame_idx >= 0) && 
+             (cur_x >= 0)     && 
+             (cur_x <  n_x)   && 
+             (cur_y >= 0)     && 
+             (cur_y <  n_y);
+   else
+      return (line_active) &&
+             (frame_idx >= 1) &&
+             (cur_y >= 0) &&
+             (cur_y <  n_y);
+
 }
 
 void FLIMage::addPhotonEvent(const TcspcEvent& p)
@@ -45,29 +57,39 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
    //photon_events.push_back(p);
    //PhotonInfo photon(p);
 
-   if (p.mark & TcspcEvent::PixelClock)
+   if (frame_idx >= 0)
    {
-      cur_x++;
-
-      if (isValidPixel() && (frame_idx % frame_accumulation == 0))
+      if (p.mark & MarkPixelClock)
       {
-         intensity.at<quint16>(cur_x, cur_y) = 0;
-         sum_time.at<float>(cur_x, cur_y) = 0;
-         mean_arrival_time.at<float>(cur_x, cur_y) = 0;
+         cur_x++;
+
+         if (isValidPixel() && (frame_idx % frame_accumulation == 0))
+         {
+            intensity.at<quint16>(cur_x, cur_y) = 0;
+            sum_time.at<float>(cur_x, cur_y) = 0;
+            mean_arrival_time.at<float>(cur_x, cur_y) = 0;
+         }
+      }
+
+      if (p.mark & MarkLineStartClock)
+      {
+         line_start_time = p.macro_time;
+         line_active = true;
+
+         cur_x = -1;
+         cur_y++;
+      }
+
+      if (p.mark & MarkLineEndClock)
+      {
+         auto this_line_duration = p.macro_time - line_start_time;
+         frame_duration += this_line_duration;
+
+         line_active = false;
       }
    }
-   if (p.mark & TcspcEvent::LineClock)
-   {
-      cur_x = -1;
-      cur_y++;
-
-      if (cur_y >= n_y)
-      {
-         cur_y = n_y - 1;
-         std::cout << "Extra line!\n";
-      }
-   }
-   if (p.mark & TcspcEvent::FrameClock)
+   
+   if (p.mark & MarkFrameClock)
    {
       // Check if we're finished an image
       if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
@@ -78,17 +100,36 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
             cur_histogram[i] = 0;
       }
 
+      if (!using_pixel_markers && frame_idx >= 0)
+      {
+         int measured_lines = cur_y + 1;
+         if ((measured_lines != n_y) || (measured_lines != n_x))
+            resize(measured_lines, measured_lines);
+
+         line_duration = static_cast<double>(frame_duration) / (cur_y + 1);
+         frame_duration = 0;
+      }
+
       frame_idx++;
       cur_x = -1;
       cur_y = -1;
    }
+
    /*
    cur_x = 0;
    cur_y = 0;
    frame_idx = 0;
    */
-   if ((p.mark == TcspcEvent::Photon) && isValidPixel()) // is a photon
+   if ((p.mark == MarkPhoton) && isValidPixel()) // is a photon
    {
+      if (!using_pixel_markers)
+      {
+         cur_x = ((p.macro_time - line_start_time) * n_x) / line_duration;
+         assert(cur_x >= 0);
+         assert(cur_x < n_x);
+      }
+
+
       float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));
       float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += p.micro_time);
       mean_arrival_time.at<float>(cur_x, cur_y) = p_sum_time / p_intensity;

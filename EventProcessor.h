@@ -109,7 +109,6 @@ void EventProcessorPrivate<Event, evt>::processorThread()
             {
                auto evt = Event(buffer[i]);
                flimage->addPhotonEvent(evt);
-
             }
          }
 //#pragma omp section

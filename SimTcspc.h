@@ -6,6 +6,7 @@
 
 struct sim_event
 {
+   uint64_t macro_time;
    uint32_t micro_time;
    uint8_t channel;
    uint8_t mark;
@@ -21,7 +22,7 @@ public:
 
    void init();
    void saveSDT(FLIMage& image, const QString& filename);
-   bool readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
+   size_t readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
 
 private:
 
@@ -41,6 +42,11 @@ private:
 
    double T = 12500;
 
+   int pixel_duration = 10000;
+   int inter_line_duration = 100000;
+   int inter_frame_duration = 100000;
+   long long cur_macro_time = 0;
+
    std::default_random_engine generator;
 };
 
@@ -52,6 +58,7 @@ public:
    SimEvent(const sim_event evt)
    {
       channel = evt.channel;
+      macro_time = evt.macro_time;
       micro_time = evt.micro_time;
       mark = evt.mark;
    }
