@@ -25,12 +25,9 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   cur_flimage = new FLIMage(1, 1, 0, 5);
+   cur_flimage = new FLIMage(5);
 
    processor->setFLIMage(cur_flimage);
-
-   n_x = 256;
-   n_y = 256;
 
    StartThread();
 }

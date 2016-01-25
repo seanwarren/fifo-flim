@@ -41,7 +41,6 @@ public:
    virtual void init() {};
 
    void setScanning(bool scanning);
-   void setImageSize(int n);
    void startScanning();
    void stopScanning();
 
@@ -79,8 +78,6 @@ protected:
    FLIMage* cur_flimage;
 
    int frame_accumulation = 1;
-   int n_x = 1;
-   int n_y = 1;
 
    bool scanning = false;
 

@@ -15,10 +15,7 @@ FifoTcspc(parent)
 {
    processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
 
-   n_x = n_px;
-   n_y = n_px;
-
-   cur_flimage = new FLIMage(n_px, n_px, 0, n_bits);
+   cur_flimage = new FLIMage(n_bits);
    processor->setFLIMage(cur_flimage);
    StartThread();
 }

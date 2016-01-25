@@ -47,8 +47,10 @@ class FLIMage : public QObject
    Q_OBJECT
 public:
 
-   FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits = 0, QObject* parent = 0);
-   void resize(int n_x, int n_y, int sdt_header = 0);
+   FLIMage(int n_x, int n_y, int histogram_bits = 0, QObject* parent = 0);
+   FLIMage(int histogram_bits = 0, QObject* parent = 0);
+
+   void resize(int n_x, int n_y);
 
    cv::Mat& getIntensity() { return intensity; }
    cv::Mat& getMeanArrivalTime() { return mean_arrival_time; }
@@ -67,6 +69,7 @@ signals:
 
 protected:
 
+   void init(int histogram_bits);
    bool isValidPixel();
 
    int n_x = 1, n_y = 1;

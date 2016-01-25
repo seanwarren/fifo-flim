@@ -1,7 +1,21 @@
 #include "FLIMage.h"
 
-FLIMage::FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits, QObject* parent) :
-   QObject(parent)   
+FLIMage::FLIMage(int n_x, int n_y, int histogram_bits, QObject* parent) :
+   QObject(parent),
+   n_x(n_x), n_y(n_y)
+{
+   init(histogram_bits);
+}
+
+
+FLIMage::FLIMage(int histogram_bits, QObject* parent) :
+   QObject(parent),
+   n_x(1), n_y(1)
+{
+   init(histogram_bits);
+}
+
+void FLIMage::init(int histogram_bits)
 {
    histogram_bits = std::min(histogram_bits, 12);
    //construct_histogram = histogram_bits >= 0;
@@ -12,16 +26,16 @@ FLIMage::FLIMage(int n_x, int n_y, int sdt_header, int histogram_bits, QObject* 
    decay.resize(n_bins, 0);
    next_decay.resize(n_bins, 0);
 
-   resize(n_x, n_y, sdt_header);
+   resize(n_x, n_y);
 
    next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
 }
 
-void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
+
+void FLIMage::resize(int n_x_, int n_y_)
 {
    n_x = n_x_;
    n_y = n_y_;
-   sdt_header = sdt_header_;
 
    cur_histogram.resize(n_x * n_y * n_bins);
    intensity = cv::Mat(n_x, n_y, CV_16U, cvScalar(0));
@@ -36,7 +50,7 @@ void FLIMage::resize(int n_x_, int n_y_, int sdt_header_)
 
 bool FLIMage::isValidPixel()
 {
-   if ((n_x == 0) && (n_y == 1)) return true;
+   if ((n_x == 1) && (n_y == 1)) return true;
    if (using_pixel_markers)
       return (line_active)    && 
              (frame_idx >= 0) && 
@@ -115,24 +129,27 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       cur_y = -1;
    }
 
-   /*
-   cur_x = 0;
-   cur_y = 0;
-   frame_idx = 0;
-   */
    if ((p.mark == MarkPhoton) && isValidPixel()) // is a photon
    {
-      if (!using_pixel_markers)
+      if (!using_pixel_markers && n_x > 1)
       {
          cur_x = ((p.macro_time - line_start_time) * n_x) / line_duration;
          assert(cur_x >= 0);
          assert(cur_x < n_x);
       }
 
+      int tx = cur_x;
+      int ty = cur_y;
+      if ((n_x == 1) && (n_y == 1))
+      {
+         tx = 0;
+         ty = 0;
+      }
 
-      float p_intensity = (++intensity.at<quint16>(cur_x, cur_y));
-      float p_sum_time = (sum_time.at<float>(cur_x, cur_y) += p.micro_time);
-      mean_arrival_time.at<float>(cur_x, cur_y) = p_sum_time / p_intensity;
+
+      float p_intensity = (++intensity.at<quint16>(tx, ty));
+      float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
+      mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity;
       next_decay[p.micro_time]++;
 
       if (construct_histogram)
