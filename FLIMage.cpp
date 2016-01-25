@@ -1,21 +1,8 @@
 #include "FLIMage.h"
 
-FLIMage::FLIMage(int n_x, int n_y, int histogram_bits, QObject* parent) :
+FLIMage::FLIMage(int histogram_bits, int n_chan, QObject* parent) :
    QObject(parent),
-   n_x(n_x), n_y(n_y)
-{
-   init(histogram_bits);
-}
-
-
-FLIMage::FLIMage(int histogram_bits, QObject* parent) :
-   QObject(parent),
-   n_x(1), n_y(1)
-{
-   init(histogram_bits);
-}
-
-void FLIMage::init(int histogram_bits)
+   n_chan(n_chan)
 {
    histogram_bits = std::min(histogram_bits, 12);
    //construct_histogram = histogram_bits >= 0;
@@ -23,8 +10,8 @@ void FLIMage::init(int histogram_bits)
    n_bins = 1 << (histogram_bits);
    bit_shift = 12 - histogram_bits;
 
-   decay.resize(n_bins, 0);
-   next_decay.resize(n_bins, 0);
+   decay.resize(n_chan, std::vector<uint>(n_bins, 0));
+   next_decay.resize(n_chan, std::vector<uint>(n_bins, 0));
 
    resize(n_x, n_y);
 
@@ -73,7 +60,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
 
    if (frame_idx >= 0)
    {
-      if (p.mark & MarkPixelClock)
+      if (p.mark & TcspcEvent::PixelMarker)
       {
          cur_x++;
 
@@ -85,7 +72,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          }
       }
 
-      if (p.mark & MarkLineStartClock)
+      if (p.mark & TcspcEvent::LineStartMarker)
       {
          line_start_time = p.macro_time;
          line_active = true;
@@ -94,7 +81,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          cur_y++;
       }
 
-      if (p.mark & MarkLineEndClock)
+      if (p.mark & TcspcEvent::LineEndMarker)
       {
          auto this_line_duration = p.macro_time - line_start_time;
          frame_duration += this_line_duration;
@@ -103,7 +90,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       }
    }
    
-   if (p.mark & MarkFrameClock)
+   if (p.mark & TcspcEvent::FrameMarker)
    {
       // Check if we're finished an image
       if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
@@ -129,7 +116,7 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
       cur_y = -1;
    }
 
-   if ((p.mark == MarkPhoton) && isValidPixel()) // is a photon
+   if ((p.mark == TcspcEvent::Photon) && isValidPixel()) // is a photon
    {
       if (!using_pixel_markers && n_x > 1)
       {
@@ -146,11 +133,10 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
          ty = 0;
       }
 
-
       float p_intensity = (++intensity.at<quint16>(tx, ty));
       float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
       mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity;
-      next_decay[p.micro_time]++;
+      next_decay[p.channel][p.micro_time]++;
 
       if (construct_histogram)
       {
@@ -162,16 +148,12 @@ void FLIMage::addPhotonEvent(const TcspcEvent& p)
    if (QTime::currentTime() > next_refresh)
    {
       decay = next_decay;
-      std::fill(next_decay.begin(), next_decay.end(), 0);
+
+      for (int i = 0; i < n_chan; i++)
+         std::fill(next_decay[i].begin(), next_decay[i].end(), 0);
+
       next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
       emit decayUpdated();
    }
 
-}
-
-void FLIMage::writeSPC(std::string filename)
-{
-   std::ofstream os(filename, std::ofstream::out | std::ofstream::binary);
-   os << sdt_header;
-   //os.write(reinterpret_cast<char*>(photon_events.data()), photon_events.size() * sizeof(Photon));
 }

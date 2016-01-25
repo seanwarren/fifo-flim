@@ -15,7 +15,7 @@ FifoTcspc(parent)
 {
    processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
 
-   cur_flimage = new FLIMage(n_bits);
+   cur_flimage = new FLIMage(n_bits, 4);
    processor->setFLIMage(cur_flimage);
    StartThread();
 }
@@ -44,11 +44,12 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
 
    size_t buffer_length = buffer.size();
 
-
    double N = abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
 
    std::poisson_distribution<int> N_dist(N);
-   uint8_t channel = 1;
+   std::uniform_int_distribution<int> ch_dist(0, n_chan-1);
+
+   uint8_t channel = 0;
 
    int idx = 0;
    size_t n = N_dist(generator);
@@ -80,14 +81,19 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
    //buffer[idx++] = { 0, 0, MARK_PIXEL };
 
    double tau = static_cast<double>(cur_px) / n_px * 4000 + 500;
-   std::exponential_distribution<double> exp_dist(1 / tau);
+   std::vector<std::exponential_distribution<double>> exp_dist;
+   
+   for (int i = 0; i < n_chan; i++)
+      exp_dist.push_back(std::exponential_distribution<double>(1 / (tau + i * 500)));
+
    std::normal_distribution<double> irf_dist(1000, 100);
 
 
    for (int i = 0; i < n; i++)
    {  
       double intpart;
-      double t = exp_dist(generator) + irf_dist(generator);
+      int channel = ch_dist(generator);
+      double t = exp_dist[channel](generator) + irf_dist(generator);
       t = modf(t / T, &intpart);
 
       uint32_t micro_time = static_cast<int>(t * 256);

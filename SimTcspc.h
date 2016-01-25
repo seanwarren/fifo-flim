@@ -35,6 +35,7 @@ private:
    void readRemainingPhotonsFromStream();
 
    int n_px = 64;
+   int n_chan = 4;
    int n_bits = 8;
 
    int cur_px = n_px;

@@ -6,24 +6,18 @@
 #include <iostream>
 #include <fstream>
 
-
-#define MarkPhoton  0
-#define MarkPixelClock 1
-#define MarkLineStartClock 2
-#define MarkLineEndClock 4
-#define MarkFrameClock 8
-
 class TcspcEvent
 {
 public:
    
-   /*
-   const static uchar Photon = 0;
-   const static uchar PixelClock = 1;
-   const static uchar LineStartClock = 2;
-   const static uchar LineEndClock = 4;
-   const static uchar FrameClock = 8;
-   */
+   enum Mark {
+      Photon = 0,
+      PixelMarker = 1,
+      LineStartMarker = 2,
+      LineEndMarker = 4,
+      FrameMarker = 8
+   };
+
    uint macro_time;
    uint micro_time;
    uint channel;
@@ -47,22 +41,18 @@ class FLIMage : public QObject
    Q_OBJECT
 public:
 
-   FLIMage(int n_x, int n_y, int histogram_bits = 0, QObject* parent = 0);
-   FLIMage(int histogram_bits = 0, QObject* parent = 0);
-
-   void resize(int n_x, int n_y);
+   FLIMage(int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
 
    cv::Mat& getIntensity() { return intensity; }
    cv::Mat& getMeanArrivalTime() { return mean_arrival_time; }
+   int getNumChannels() { return n_chan; }
 
    void addPhotonEvent(const TcspcEvent& p);
    void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
  
    std::list<std::vector<quint16>>& getHistogramData() { return image_histograms; }
-
-   void writeSPC(std::string filename);
    
-   std::vector<uint>& getCurrentDecay() { return decay; }
+   std::vector<uint>& getCurrentDecay(int channel) { return decay[channel]; }
 
 signals:
    void decayUpdated();
@@ -70,8 +60,10 @@ signals:
 protected:
 
    void init(int histogram_bits);
+   void resize(int n_x, int n_y);
    bool isValidPixel();
 
+   int n_chan = 1;
    int n_x = 1, n_y = 1;
    int cur_x = -1, cur_y = -1;
    int line_active = false;
@@ -94,8 +86,8 @@ protected:
    std::vector<quint16> cur_histogram;
    std::list<std::vector<quint16>> image_histograms;
 
-   std::vector<uint> decay;
-   std::vector<uint> next_decay;
+   std::vector<std::vector<uint>> decay;
+   std::vector<std::vector<uint>> next_decay;
 
    QTime next_refresh;
 
