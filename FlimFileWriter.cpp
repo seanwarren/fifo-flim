@@ -1,6 +1,7 @@
 #include "FlimFileWriter.h"
 #include <QStandardPaths>
 #include <QFileDialog>
+#include <QBuffer>
 
 void FlimFileWriter::eventStreamAboutToStart()
 {
@@ -31,13 +32,17 @@ void FlimFileWriter::writeFileHeader()
    quint32 format_version = 1;
    
    header.clear();
-   QDataStream header_stream(header);
+   QBuffer buffer(&header);
+   buffer.open(QIODevice::WriteOnly);
+   header_stream.setDevice(&buffer);
 
    writeTag("CreationDate", QDateTime::currentDateTime());
    writeTag("TcspcSystem", tcspc->describe());
    writeTag("SyncRate", tcspc->getSyncRateHz());
    writeTag("Microtime_ResolutionUnit_Ps", tcspc->getMicroBaseResolutionPs());
    writeTag("Macrotime_ResolutionUnit_Ps", tcspc->getMacroBaseResolutionPs());
+
+   buffer.close();
 
    quint32 header_size = header.size();
    data_stream << magic_number << format_version << header_size;
@@ -85,30 +90,30 @@ void FlimFileWriter::stopRecording()
 
 
 
-void FlimFileWriter::writeTag(const QString& tag, double value)
+void FlimFileWriter::writeTag(const char* tag, double value)
 {
    writeTag(tag, TagDouble, reinterpret_cast<const char*>(&value), sizeof(double));
 };
 
-void FlimFileWriter::writeTag(const QString& tag, int64_t value)
+void FlimFileWriter::writeTag(const char* tag, int64_t value)
 {
    writeTag(tag, TagInt64, reinterpret_cast<const char*>(&value), sizeof(int64_t));
 };
 
-void FlimFileWriter::writeTag(const QString& tag, const QString& value)
+void FlimFileWriter::writeTag(const char* tag, const QString& value)
 {
    QByteArray ba = value.toLatin1();
    writeTag(tag, TagString, ba.data(), ba.size());
 };
 
-void FlimFileWriter::writeTag(const QString& tag, QDateTime value)
+void FlimFileWriter::writeTag(const char* tag, QDateTime value)
 {
    QByteArray ba = value.toString(Qt::ISODate).toLatin1();
    writeTag(tag, TagDate, ba.data(), ba.size());
 }
 
-void FlimFileWriter::writeTag(const QString& tag, uint16_t type, const char* data, uint32_t length)
+void FlimFileWriter::writeTag(const char* tag, uint16_t type, const char* data, uint32_t length)
 {
-   data_stream << tag.data() << type << length;
-   data_stream.writeBytes(data, length);
+   header_stream << tag << type << length;
+   header_stream.writeBytes(data, length);
 }

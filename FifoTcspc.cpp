@@ -43,6 +43,7 @@ cv::Mat FifoTcspc::GetImageUnsafe()
 
 void FifoTcspc::startFIFO()
 {
+
    cur_flimage->setFrameAccumulation(frame_accumulation);
 
 	scanning = true;

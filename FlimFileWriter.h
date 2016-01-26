@@ -45,6 +45,7 @@ public:
    QFile file;
    QDataStream data_stream;
    QByteArray header;
+   QDataStream header_stream;
    LZ4Stream lz4_stream;
 
    bool recording = false;
@@ -52,11 +53,11 @@ public:
 
    void writeFileHeader();
 
-   void writeTag(const QString& tag, double value);
-   void writeTag(const QString& tag, int64_t value);
-   void writeTag(const QString& tag, const QString& value);
-   void writeTag(const QString& tag, QDateTime value);
-   void writeTag(const QString& tag, uint16_t type, const char* data, uint32_t length);
+   void writeTag(const char* tag, double value);
+   void writeTag(const char* tag, int64_t value);
+   void writeTag(const char* tag, const QString& value);
+   void writeTag(const char* tag, QDateTime value);
+   void writeTag(const char* tag, uint16_t type, const char* data, uint32_t length);
 
    FifoTcspc* tcspc = nullptr;
 };
