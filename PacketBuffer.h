@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <mutex>
+#include <condition_variable>
 #include "FLIMage.h"
 
 template<class T> 
@@ -47,6 +49,7 @@ public:
       buffer_size[fill_idx] = size;
       buffer_state[fill_idx] = BufferFilled;
       fill_idx = (fill_idx + 1) % n_buffers;
+	  buffer_cv.notify_all();
    }
 
    void failedToFillBuffer()
@@ -70,6 +73,15 @@ public:
       if (buffer_state[process_idx] != BufferFilled)
          return 0;
       return buffer_size[process_idx];
+   }
+
+   void waitForNextBuffer()
+   {
+	   if (buffer_state[process_idx] != BufferFilled)
+	   {
+		   std::unique_lock<std::mutex> lk(buffer_mutex);
+		   buffer_cv.wait(lk, [this] { return buffer_state[process_idx] == BufferFilled; });
+	   }
    }
 
    void finishedProcessingBuffer()
@@ -97,5 +109,8 @@ private:
    std::vector<BufferState> buffer_state;
    std::vector<std::vector<T>> buffer;
    std::vector<size_t> buffer_size;
+
+   std::mutex buffer_mutex;
+   std::condition_variable buffer_cv;
 
 };

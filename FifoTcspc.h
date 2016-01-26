@@ -6,6 +6,7 @@
 #include <QDataStream>
 #include <thread>
 #include <QFile> 
+#include <memory>
 #include "LZ4Stream.h"
 #include "EventProcessor.h"
 
@@ -44,20 +45,21 @@ public:
    void startScanning();
    void stopScanning();
 
-   void setFrameAccumulation(int frame_accumulation_)
-   {
-      frame_accumulation = frame_accumulation_;
-   }
-
-   void startRecording(const QString& filename);
-   void setRecording(bool recording);
+   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
+   void addTcspcEventConsumer(std::shared_ptr<TcspcEventConsumer> consumer) { processor->addTcspcEventConsumer(consumer); }
 
    int getFrameAccumulation() { return frame_accumulation; }
+
+   virtual double getSyncRateHz() = 0;
+   virtual double getMicroBaseResolutionPs() = 0;
+   virtual double getMacroBaseResolutionPs() = 0;
+   virtual const QString describe() = 0;
 
    cv::Mat GetImage();
    cv::Mat GetImageUnsafe();
 
-   FLIMage** getPreviewFLIMage() { return &cur_flimage; };
+   std::shared_ptr<FLIMage> getPreviewFLIMage() { return cur_flimage; };
+
 
 signals:
 
@@ -74,8 +76,7 @@ protected:
    virtual void startModule() {};
    virtual void stopModule() {};
    
-
-   FLIMage* cur_flimage;
+   std::shared_ptr<FLIMage> cur_flimage;
 
    int frame_accumulation = 1;
 

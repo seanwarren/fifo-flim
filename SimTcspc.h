@@ -21,8 +21,14 @@ public:
    ~SimTcspc();
 
    void init();
-   void saveSDT(FLIMage& image, const QString& filename);
    size_t readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
+
+   virtual double getSyncRateHz() { return 1e12/T; };
+   virtual double getMicroBaseResolutionPs() { return T / (1 << n_bits); }
+   virtual double getMacroBaseResolutionPs() { return T; }
+
+
+   const QString describe() { return "Simulated TCSPC module"; }
 
 private:
 
@@ -46,7 +52,7 @@ private:
    int pixel_duration = 10000;
    int inter_line_duration = 100000;
    int inter_frame_duration = 100000;
-   long long cur_macro_time = 0;
+   uint64_t cur_macro_time = 0;
 
    std::default_random_engine generator;
 };

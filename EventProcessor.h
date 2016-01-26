@@ -1,12 +1,11 @@
 #pragma once
 
 #include <QString>
-#include <QFile>
-#include <QDataStream>
 #include <thread>
 #include <functional>
+#include <memory>
+#include <vector>
 #include "PacketBuffer.h"
-#include "LZ4Stream.h"
 
 class EventProcessor
 {
@@ -15,17 +14,13 @@ public:
    void start();
    void stop();
 
-   void startRecording(const QString& filename = "");
-   void stopRecording();
-   bool isRecording() { return recording; }
-
-   void setFLIMage(FLIMage* flimage_) { flimage = flimage_; };
-   FLIMage* getFLIMage() { return flimage; };
-
-   void writeFileHeader();
-
    template<typename evt>
    std::vector<evt> getNextBufferToFill();
+
+   void addTcspcEventConsumer(std::shared_ptr<TcspcEventConsumer> consumer)
+   {
+      consumers.push_back(consumer);
+   };
 
 protected:
 
@@ -35,19 +30,9 @@ protected:
    std::thread processor_thread;
    std::thread reader_thread;
 
-   // Recording
-   //===================================
-   QString folder;
-   QString file_name;
-   QFile file;
-   QDataStream data_stream;
-   LZ4Stream lz4_stream;
+   std::vector<std::shared_ptr<TcspcEventConsumer>> consumers;
 
-   bool running = true;
-   bool recording = false;
-   int spc_header = 0;
-
-   FLIMage* flimage;
+   bool running;
 };
 
 template<class Event, typename evt>
@@ -71,8 +56,8 @@ protected:
    PacketBuffer<evt> packet_buffer;
    ReaderFcn reader_fcn;
 
-    template<class Provider, class Event, typename evt>
-    friend EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
+   template<class Provider, class Event, typename evt>
+   friend EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
 };
 
 template<class Provider, class Event, typename evt>
@@ -87,36 +72,29 @@ EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_le
 template<class Event, typename evt>
 void EventProcessorPrivate<Event, evt>::processorThread()
 {
+   size_t n_consumers = consumers.size();
+
    while (running)
    {
-
       size_t n = packet_buffer.getProcessingBufferSize();
       
-      if (n == 0) // TODO: use a condition variable here
+      if (n == 0)
       {
-         QThread::usleep(100);
+		 packet_buffer.waitForNextBuffer();
          continue;
       }
       
       vector<evt> buffer = packet_buffer.getNextBufferToProcess();
-      
-      
-//#pragma omp parallel sections num_threads(2)
+
+      for (int c = 0; c < n_consumers; c++)
       {
-         // SECTION 1: Process for live display
-         {
+         const auto& consumer = consumers[c];
+         if (consumer->isProcessingEvents())
             for (int i = 0; i < n; i++)
             {
-               auto evt = Event(buffer[i]);
-               flimage->addPhotonEvent(evt);
+               TcspcEvent evt = Event(buffer[i]);
+               consumer->addEvent(evt);
             }
-         }
-//#pragma omp section
-         // SECTION 2: Write to disk
-         {
-            if (recording)
-               lz4_stream.write(reinterpret_cast<char*>(buffer.data()), n*sizeof(evt));
-         }
       }
 
       packet_buffer.finishedProcessingBuffer();
@@ -140,10 +118,6 @@ void EventProcessorPrivate<Event, evt>::readerThread()
             packet_buffer.finishedFillingBuffer(n_read);
          else
             packet_buffer.failedToFillBuffer();
-      }
-      else
-      {
-         //QThread::msleep(100);
       }
    }
 }

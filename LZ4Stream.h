@@ -46,7 +46,7 @@ public:
       {
          size_t msg_bytes = std::min(max_message_bytes, remaining_bytes);
          
-         for(int i=0; i<msg_bytes; i++)
+         for(size_t i=0; i<msg_bytes; i++)
             ring_buf[cur_pos_ring+i] = data[cur_pos_input + i];
          
          char* ring_ptr = ring_buf.data() + cur_pos_ring;

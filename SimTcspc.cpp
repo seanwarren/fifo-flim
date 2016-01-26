@@ -14,9 +14,9 @@ SimTcspc::SimTcspc(QObject* parent) :
 FifoTcspc(parent)
 {
    processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
+   cur_flimage = make_shared<FLIMage>(8, 4);
 
-   cur_flimage = new FLIMage(n_bits, 4);
-   processor->setFLIMage(cur_flimage);
+   processor->addTcspcEventConsumer(cur_flimage);
    StartThread();
 }
 
@@ -92,7 +92,7 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
    for (int i = 0; i < n; i++)
    {  
       double intpart;
-      int channel = ch_dist(generator);
+      uint8_t channel = ch_dist(generator);
       double t = exp_dist[channel](generator) + irf_dist(generator);
       t = modf(t / T, &intpart);
 

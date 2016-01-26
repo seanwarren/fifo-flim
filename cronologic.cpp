@@ -25,9 +25,9 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   cur_flimage = new FLIMage(5, 3);
+   cur_flimage = std::make_shared<FLIMage>(5, 3);
 
-   processor->setFLIMage(cur_flimage);
+   processor->addTcspcEventConsumer(cur_flimage);
 
    StartThread();
 }
@@ -48,6 +48,8 @@ void Cronologic::checkCard()
    device = timetagger4_init(&params, &error_code, &error_message);
    CHECK(error_code);
 
+   board_name = "Cronologic TimeTagger4-";
+
    // print board information
    timetagger4_static_info staticinfo;
    timetagger4_get_static_info(device, &staticinfo);
@@ -56,16 +58,23 @@ void Cronologic::checkCard()
    switch (staticinfo.board_configuration&TIMETAGGER4_BOARDCONF_MASK)
    {
    case TIMETAGGER4_1G_BOARDCONF:
-      printf("1G\n"); break;
+      printf("1G\n");
+      board_name.append("1G");
+      break;
    case TIMETAGGER4_2G_BOARDCONF:
-      printf("2G\n"); break;
+      printf("2G\n");
+      board_name.append("2G");
+      break;
    default:
       printf("unknown\n");
    }
    printf("Board Revision      : %d\n", staticinfo.board_revision);
    printf("Firmware Revision   : %d.%d\n", staticinfo.firmware_revision, staticinfo.subversion_revision);
    printf("Driver Revision     : %d.%d.%d.%d\n", ((staticinfo.driver_revision >> 24) & 255), ((staticinfo.driver_revision >> 16) & 255), ((staticinfo.driver_revision >> 8) & 255), (staticinfo.driver_revision & 255));
+
 }
+
+
 
 void Cronologic::configureCard()
 {
@@ -158,8 +167,6 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
    read_config.acknowledge_last_read = true;
 
-   long long first_macro_time = -1;
-
    size_t buffer_length = buffer.size();
    int idx = 0;
    int continues = 0;
@@ -170,9 +177,9 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
       
       if (status > 0)
       {
-         //QThread::usleep(10);
-         //if (continues++ > 1000)
-         //   break;
+         QThread::usleep(10);
+         if (continues++ > 1000)
+            break;
          continue;
       }
 
@@ -180,15 +187,24 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
       
       CHECK(read_data.error_code);
 
-      _int64 GroupAbsTime = 0;
-      _int64 GroupAbsTime_old = 0;
-      int UpdateCount = 1000;
-      long long packet_count = 0;
-
       // iterate over all packets received with the last read
       crono_packet* p = read_data.first_packet;
       while (p <= read_data.last_packet)
       {
+         // Measure sync rate
+         int update_count = 10000;
+         if (packet_count % update_count == 0)
+         {
+            double period_ps = bin_size_ps * static_cast<double>(p->timestamp - last_update_time) / update_count;
+            sync_rate_hz = 1e-12 / period_ps;
+            last_update_time = p->timestamp;
+
+            rates.sync = sync_rate_hz;
+            emit ratesUpdated(rates);
+         }
+         packet_count++;
+
+
          if ((idx + 1) >= buffer_length)
             break;
 
@@ -203,16 +219,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
          if (p->flags > 1)
             std::cout << "Flag: " << (int) p->flags << "\n";
-         /*
-         GroupAbsTime = p->timestamp;
-         if (packet_count%UpdateCount == 0) {
-            // group timestamp increments at 2 GHz
-            double Rate = (2e9 / ((double)(GroupAbsTime - GroupAbsTime_old) / (double)UpdateCount));
-            //printf("\r%.2f MHz\n", Rate / 1e6);
-            GroupAbsTime_old = GroupAbsTime;
-         }
-         packet_count++;
-         */
+        
          uint64_t hit_slow = p->timestamp;
          hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
 
@@ -236,20 +243,14 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                // Get arrival time of edge
                int hit_fast = evt.hit_fast;
                uint64_t micro_time = (hit_fast >> 8);
-               uint64_t macro_time = p->timestamp; // coarse_factor_ps / 4;
+               uint64_t macro_time = p->timestamp;
                uint64_t time = micro_time + macro_time;
-
-               if (first_macro_time < 0)
-                  first_macro_time = p->timestamp;
-
-               //std::cout << "Macro Time: " << (p->timestamp - first_macro_time) << ":   ";
 
                if (rising)
                {
                   // We don't want to include rising edge in data stream
                   last_mark_rise_time = time;
                   ignore = true;
-
                }  
                else
                {
@@ -301,12 +302,6 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 }
 
 
-//============================================================
-// Configure card for FIFO mode
-//
-// This function is mostly lifted from the use_spcm.c 
-// example file
-//============================================================
 void Cronologic::configureModule()
 {
 

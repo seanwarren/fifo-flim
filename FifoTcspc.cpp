@@ -29,9 +29,6 @@ void FifoTcspc::startScanning()
 void FifoTcspc::stopScanning()
 {
 	stopFIFO();
-
-	setRecording(false);
-
 }
 
 cv::Mat FifoTcspc::GetImage()
@@ -43,27 +40,6 @@ cv::Mat FifoTcspc::GetImageUnsafe()
 {
 	return cur_flimage->getIntensity();
 }
-
-
-void FifoTcspc::setRecording(bool recording_)
-{
-	if (processor->isRecording() != recording_)
-	{
-		if (recording_)
-			processor->startRecording();
-		else
-         processor->stopRecording();
-	}
-
-   emit recordingStatusChanged(processor->isRecording());
-}
-
-
-void FifoTcspc::startRecording(const QString& filename)
-{
-   processor->startRecording(filename);
-}
-
 
 void FifoTcspc::startFIFO()
 {
@@ -79,11 +55,8 @@ void FifoTcspc::startFIFO()
 
 void FifoTcspc::stopFIFO()
 {
-
    processor->stop();
-
    stopModule();
-
 	scanning = false;
 }
 

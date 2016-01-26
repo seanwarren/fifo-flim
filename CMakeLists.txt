@@ -6,7 +6,7 @@ option(USE_BECKER_HICKL FALSE)
 option(USE_CRONOLOGIC FALSE)
 
 find_package(Qt5Widgets REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -38,6 +38,7 @@ set(SOURCE
    FifoTcspc.cpp
    SimTcspc.cpp
    EventProcessor.cpp
+   FlimFileWriter.cpp
    lz4.c
    lz4hc.c
    ${BH_SOURCE}
@@ -47,9 +48,11 @@ set(SOURCE
 set(HEADERS
    FifoTcspc.h
    FLIMage.h
+   TcspcEvent.h
    PacketBuffer.h
    SimTcspc.h
    EventProcessor.h
+   FlimFileWriter.h
    lz4.h
    lz4hc.h
    LZ4Stream.h
@@ -57,9 +60,10 @@ set(HEADERS
    ${CL_HEADERS}
 )
 
-include_directories(${BH_INCLUDE} ${CL_INCLUDE} ${Qt5Widgets_INCLUDE_DIRS} ${InstrumentControl_INCLUDE_DIR})
+set(COMMON_INCLUDE ${BH_INCLUDE} ${CL_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${InstrumentControl_INCLUDE_DIR})
+include_directories(${Qt5Widgets_INCLUDE_DIRS} ${COMMON_INCLUDE})
 
 add_library(fifo_flim OBJECT ${SOURCE} ${HEADERS} ${UI_HEADERS} ${UI_RESOURCES})
 
-set(fifo_flim_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${InstrumentControl_INCLUDE_DIR} ${BH_INCLUDE} ${CL_INCLUDE} PARENT_SCOPE)
-set(fifo_flim_LIBS ${OpenCV_LIBRARIES} ${InstrumentControl_LIBRARIES} ${BH_LIB} ${CL_LIB} PARENT_SCOPE)
+set(fifo_flim_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${COMMON_INCLUDE} PARENT_SCOPE)
+set(fifo_flim_LIBS ${OpenCV_LIBS} ${InstrumentControl_LIBRARIES} ${BH_LIB} ${CL_LIB} PARENT_SCOPE)

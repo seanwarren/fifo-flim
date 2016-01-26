@@ -57,7 +57,7 @@ bool FLIMage::isValidPixel()
 
 }
 
-void FLIMage::addPhotonEvent(const TcspcEvent& p)
+void FLIMage::addEvent(const TcspcEvent& p)
 {
    //photon_events.push_back(p);
    //PhotonInfo photon(p);

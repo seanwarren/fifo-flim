@@ -20,9 +20,13 @@ public:
    ~Cronologic();
 
 	void init();
-	void saveSDT(FLIMage& image, const QString& filename);
 
    size_t readPackets(std::vector<cl_event>& buffer); // return whether any packets were read
+
+   const QString describe() { return board_name; }
+   double getSyncRateHz() { return sync_rate_hz; }
+   double getMicroBaseResolutionPs() { return bin_size_ps; }
+   double getMacroBaseResolutionPs() { return bin_size_ps; }
 
 private:
 
@@ -38,7 +42,6 @@ private:
 
    void readRemainingPhotonsFromStream();
 
-
    timetagger4_device* device;
 
    double bin_size_ps;
@@ -47,8 +50,16 @@ private:
    int n_line = 0;
    int n_pixel = 0;
    bool line_active = false;
+   uint64_t packet_count = 0;
+   uint64_t last_update_time = 0;
 
    std::vector<uint32_t> t_offset;
+
+   double sync_rate_hz = 0;
+
+   FlimRates rates;
+
+   QString board_name;
 };
 
 
