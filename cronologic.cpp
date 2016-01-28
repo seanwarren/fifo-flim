@@ -196,7 +196,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          if (packet_count % update_count == 0)
          {
             double period_ps = bin_size_ps * static_cast<double>(p->timestamp - last_update_time) / update_count;
-            sync_rate_hz = 1e-12 / period_ps;
+            sync_rate_hz = 1e12 / period_ps;
             last_update_time = p->timestamp;
 
             rates.sync = sync_rate_hz;

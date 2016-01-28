@@ -27,6 +27,8 @@ public:
    double getSyncRateHz() { return sync_rate_hz; }
    double getMicroBaseResolutionPs() { return bin_size_ps; }
    double getMacroBaseResolutionPs() { return bin_size_ps; }
+   int getNumChannels() { return 3; } // TODO
+   int getNumTimebins() { return 25; } // TODO
 
 private:
 
