@@ -14,7 +14,7 @@ public:
    };
 
    uint64_t macro_time;
-   uint32_t micro_time;
+   uint16_t micro_time;
    uint8_t channel;
    uint8_t mark;
 

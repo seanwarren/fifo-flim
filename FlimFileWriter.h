@@ -5,16 +5,19 @@
 #include <QFile>
 #include <QDataStream>
 #include <QDateTime>
-#include "LZ4Stream.h"
+#include "LZ4ThreadedStream.h"
 #include "TcspcEvent.h"
 #include "FifoTcspc.h"
 
 enum FlimMetadataTag
 {
-   TagDouble,
-   TagInt64,
-   TagString,
-   TagDate
+   TagDouble    = 0,
+   TagUInt64    = 1,
+   TagInt64     = 2,
+   TagBool      = 4,
+   TagString    = 5,
+   TagDate      = 6,
+   TagEndHeader = 7
 };
 
 class FlimFileWriter : public QObject, public TcspcEventConsumer
@@ -55,9 +58,15 @@ public:
 
    void writeTag(const char* tag, double value);
    void writeTag(const char* tag, int64_t value);
+   void writeTag(const char* tag, uint64_t value);
+   void writeTag(const char* tag, bool value);
    void writeTag(const char* tag, const QString& value);
    void writeTag(const char* tag, QDateTime value);
+   void writeEndTag();
    void writeTag(const char* tag, uint16_t type, const char* data, uint32_t length);
 
    FifoTcspc* tcspc = nullptr;
+   std::vector<TcspcEvent> buffer;
+   int buffer_pos = 0;
+   bool use_compression = false;
 };

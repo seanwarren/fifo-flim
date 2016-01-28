@@ -9,6 +9,7 @@
 #include <memory>
 #include "LZ4Stream.h"
 #include "EventProcessor.h"
+#include "FLIMage.h"
 
 #define MARK_PHOTON     0x0
 #define MARK_PIXEL      0x1
@@ -50,6 +51,8 @@ public:
 
    int getFrameAccumulation() { return frame_accumulation; }
 
+   virtual int getNumChannels() = 0;
+   virtual int getNumTimebins() = 0;
    virtual double getSyncRateHz() = 0;
    virtual double getMicroBaseResolutionPs() = 0;
    virtual double getMacroBaseResolutionPs() = 0;

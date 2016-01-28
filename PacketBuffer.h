@@ -3,7 +3,6 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
-#include "FLIMage.h"
 
 template<class T> 
 class PacketBuffer
@@ -14,7 +13,7 @@ class PacketBuffer
 
 
 public:
-   PacketBuffer(int n_buffers, int buffer_length) :
+   PacketBuffer(int n_buffers, size_t buffer_length) :
       n_buffers(n_buffers), buffer_length(buffer_length)
    {
       // Allocate buffers
@@ -28,19 +27,19 @@ public:
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
    }
 
-   std::vector<T>& getNextBufferToFill()
+   std::vector<T>* getNextBufferToFill()
    {
       // return an empty vector if there is no valid buffer
       if (buffer_state[fill_idx] != BufferEmpty)
       {
          qWarning("Internal buffer overflowed");
-         return empty_buffer;
+         return nullptr;
       }
 
       // Get buffer and increment index of next buffer
       buffer_state[fill_idx] = BufferFilling;
       buffer_size[fill_idx] = 0;
-      return buffer[fill_idx];
+      return &(buffer[fill_idx]);
    }
 
    void finishedFillingBuffer(size_t size)
@@ -75,12 +74,17 @@ public:
       return buffer_size[process_idx];
    }
 
+   bool streamFinished()
+   {
+      return stream_finished && (buffer_state[process_idx] != BufferFilled);
+   }
+
    void waitForNextBuffer()
    {
 	   if (buffer_state[process_idx] != BufferFilled)
 	   {
 		   std::unique_lock<std::mutex> lk(buffer_mutex);
-		   buffer_cv.wait(lk, [this] { return buffer_state[process_idx] == BufferFilled; });
+		   buffer_cv.wait(lk, [this] { return stream_finished || (buffer_state[process_idx] == BufferFilled); });
 	   }
    }
 
@@ -89,11 +93,14 @@ public:
       // Set state of buffer to empty
       buffer_state[process_idx] = BufferEmpty;
 
-      // Resize buffer in case it was returned partially filled
-      //buffer[process_idx].resize(buffer_length);
-
       // Increment index of point to next buffer
       process_idx = (process_idx + 1) % n_buffers;
+   }
+
+   void setStreamFinished()
+   {
+      stream_finished = true;
+      buffer_cv.notify_all();
    }
 
 
@@ -103,7 +110,7 @@ private:
    int process_idx = 0;
 
    int n_buffers;
-   int buffer_length;
+   size_t buffer_length;
 
    std::vector<T> empty_buffer;
    std::vector<BufferState> buffer_state;
@@ -112,5 +119,7 @@ private:
 
    std::mutex buffer_mutex;
    std::condition_variable buffer_cv;
+
+   bool stream_finished = false;
 
 };

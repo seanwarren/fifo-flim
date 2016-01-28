@@ -61,7 +61,7 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
    {
       cur_px = 0;
 
-      if (cur_py >= (n_px - 1))
+      if (cur_py >= (n_px-1))
       {
          cur_py = 0;
          buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_END };

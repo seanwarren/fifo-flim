@@ -56,6 +56,7 @@ set(HEADERS
    lz4.h
    lz4hc.h
    LZ4Stream.h
+   LZ4ThreadedStream.h
    ${BH_HEADERS}
    ${CL_HEADERS}
 )

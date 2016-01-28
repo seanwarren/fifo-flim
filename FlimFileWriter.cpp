@@ -9,7 +9,7 @@ void FlimFileWriter::eventStreamAboutToStart()
       writeFileHeader();
 
    running = true;
-
+   buffer.resize(1024);
 };
 
 void FlimFileWriter::eventStreamFinished()
@@ -21,7 +21,17 @@ void FlimFileWriter::eventStreamFinished()
 void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording)
-      lz4_stream.write(reinterpret_cast<const char*>(&evt), sizeof(TcspcEvent));
+   {
+      data_stream.writeRawData(reinterpret_cast<const char*>(&evt), sizeof(evt));
+      /*
+      buffer[buffer_pos++] = evt;
+      if (buffer_pos == buffer.size())
+      {
+         lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(TcspcEvent)*buffer.size());
+         buffer_pos = 0;
+      }
+      */
+   }
 }
 
 
@@ -35,18 +45,24 @@ void FlimFileWriter::writeFileHeader()
    QBuffer buffer(&header);
    buffer.open(QIODevice::WriteOnly);
    header_stream.setDevice(&buffer);
+   header_stream.setByteOrder(QDataStream::LittleEndian);
 
    writeTag("CreationDate", QDateTime::currentDateTime());
    writeTag("TcspcSystem", tcspc->describe());
-   writeTag("SyncRate", tcspc->getSyncRateHz());
-   writeTag("Microtime_ResolutionUnit_Ps", tcspc->getMicroBaseResolutionPs());
-   writeTag("Macrotime_ResolutionUnit_Ps", tcspc->getMacroBaseResolutionPs());
+   writeTag("SyncRate_Hz", tcspc->getSyncRateHz());
+   writeTag("NumTimeBins", (int64_t) tcspc->getNumTimebins());
+   writeTag("NumChannels", (int64_t) tcspc->getNumChannels());
+   writeTag("MicrotimeResolutionUnit_ps", tcspc->getMicroBaseResolutionPs());
+   writeTag("MacrotimeResolutionUnit_ps", tcspc->getMacroBaseResolutionPs());
+   writeTag("L4ZCompression", use_compression);
+   writeTag("L4ZMessageSize", lz4_stream.getMessageSize());
+   writeEndTag();
 
    buffer.close();
 
    quint32 header_size = header.size();
-   data_stream << magic_number << format_version << header_size;
-   data_stream.writeBytes(header.data(), header.size());
+   data_stream << magic_number << format_version << (header_size + 12); // + 12 for first three numbers 
+   data_stream.writeRawData(header.data(), header.size());
 }
 
 
@@ -84,6 +100,8 @@ void FlimFileWriter::startRecording(const QString& specified_file_name)
 void FlimFileWriter::stopRecording()
 {
    recording = false;
+
+//   lz4_stream.close();
    data_stream.setDevice(nullptr);
    file.close();
 }
@@ -100,6 +118,17 @@ void FlimFileWriter::writeTag(const char* tag, int64_t value)
    writeTag(tag, TagInt64, reinterpret_cast<const char*>(&value), sizeof(int64_t));
 };
 
+void FlimFileWriter::writeTag(const char* tag, uint64_t value)
+{
+   writeTag(tag, TagUInt64, reinterpret_cast<const char*>(&value), sizeof(uint64_t));
+};
+
+void FlimFileWriter::writeTag(const char* tag, bool value)
+{
+   writeTag(tag, TagBool, reinterpret_cast<const char*>(&value), sizeof(bool));
+};
+
+
 void FlimFileWriter::writeTag(const char* tag, const QString& value)
 {
    QByteArray ba = value.toLatin1();
@@ -112,8 +141,14 @@ void FlimFileWriter::writeTag(const char* tag, QDateTime value)
    writeTag(tag, TagDate, ba.data(), ba.size());
 }
 
+void FlimFileWriter::writeEndTag()
+{
+   writeTag("EndHeader", TagEndHeader, nullptr, 0);
+}
+
 void FlimFileWriter::writeTag(const char* tag, uint16_t type, const char* data, uint32_t length)
 {
    header_stream << tag << type << length;
-   header_stream.writeBytes(data, length);
+   if (length > 0)
+      header_stream.writeRawData(data, length);
 }

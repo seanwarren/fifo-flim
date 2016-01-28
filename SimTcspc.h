@@ -26,7 +26,8 @@ public:
    virtual double getSyncRateHz() { return 1e12/T; };
    virtual double getMicroBaseResolutionPs() { return T / (1 << n_bits); }
    virtual double getMacroBaseResolutionPs() { return T; }
-
+   virtual int getNumChannels() { return n_chan; }
+   virtual int getNumTimebins() { return 1 << n_bits; };
 
    const QString describe() { return "Simulated TCSPC module"; }
 

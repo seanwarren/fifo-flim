@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 #include "PacketBuffer.h"
+#include "TcspcEvent.h"
 
 class EventProcessor
 {
@@ -76,14 +77,9 @@ void EventProcessorPrivate<Event, evt>::processorThread()
 
    while (running)
    {
+
+		packet_buffer.waitForNextBuffer();
       size_t n = packet_buffer.getProcessingBufferSize();
-      
-      if (n == 0)
-      {
-		 packet_buffer.waitForNextBuffer();
-         continue;
-      }
-      
       vector<evt> buffer = packet_buffer.getNextBufferToProcess();
 
       for (int c = 0; c < n_consumers; c++)
@@ -107,12 +103,11 @@ void EventProcessorPrivate<Event, evt>::readerThread()
 {
    while (running)
    {
-      std::vector<evt>& buffer = packet_buffer.getNextBufferToFill();
+      std::vector<evt>* buffer = packet_buffer.getNextBufferToFill();
 
-      if (!buffer.empty()) // failed to get buffer
+      if (buffer != nullptr) // failed to get buffer
       {
-
-         size_t n_read = reader_fcn(buffer);
+         size_t n_read = reader_fcn(*buffer);
 
          if (n_read > 0)
             packet_buffer.finishedFillingBuffer(n_read);
