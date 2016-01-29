@@ -13,7 +13,7 @@ class FLIMage : public QObject, public TcspcEventConsumer
    Q_OBJECT
 public:
 
-   FLIMage(float time_resolution_ps, int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
+   FLIMage(float time_resolution_ps, float macro_resolution_ps, int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
 
    cv::Mat getIntensity() 
    {
@@ -27,19 +27,22 @@ public:
       return mean_arrival_time.clone();
    }
 
+   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
+
    int getNumChannels() { return n_chan; }
    double getTimeResolution() { return time_resolution_ps; }
-   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
- 
+
    std::list<std::vector<quint16>>& getHistogramData() { return image_histograms; }
-   
    std::vector<uint>& getCurrentDecay(int channel) { return decay[channel]; }
+   std::vector<double>& getCountRates() { return count_rate; };
+   std::vector<double>& getMaxInstantCountRates() { return max_instant_count_rate; };
 
    void addEvent(const TcspcEvent& evt);
 
 
 signals:
    void decayUpdated();
+   void countRatesUpdated();
 
 protected:
 
@@ -66,13 +69,21 @@ protected:
    cv::Mat sum_time;
    cv::Mat mean_arrival_time;
    float time_resolution_ps;
+   float macro_resolution_ps;
 
-   short sdt_header;
    std::vector<quint16> cur_histogram;
-   std::list<std::vector<quint16>> image_histograms;
+   std::list<std::vector<uint16_t>> image_histograms;
 
    std::vector<std::vector<uint>> decay;
    std::vector<std::vector<uint>> next_decay;
+
+   std::vector<double> count_rate;
+   std::vector<double> max_instant_count_rate;
+
+   std::vector<uint64_t> counts_this_frame;
+   std::vector<uint64_t> last_photon_time;
+   std::vector<uint64_t> min_arrival_time_diff;
+   uint64_t last_frame_marker_time;
 
    QTime next_refresh;
 

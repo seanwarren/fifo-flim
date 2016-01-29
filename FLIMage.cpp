@@ -1,8 +1,10 @@
 #include "FLIMage.h"
+#include <limits>
 
-FLIMage::FLIMage(float time_resolution_ps, int histogram_bits, int n_chan, QObject* parent) :
+FLIMage::FLIMage(float time_resolution_ps, float macro_resolution_ps, int histogram_bits, int n_chan, QObject* parent) :
    QObject(parent),
    time_resolution_ps(time_resolution_ps),
+   macro_resolution_ps(macro_resolution_ps),
    n_chan(n_chan)
 {
    histogram_bits = std::min(histogram_bits, 12);
@@ -13,6 +15,11 @@ FLIMage::FLIMage(float time_resolution_ps, int histogram_bits, int n_chan, QObje
 
    decay.resize(n_chan, std::vector<uint>(n_bins, 0));
    next_decay.resize(n_chan, std::vector<uint>(n_bins, 0));
+   count_rate.resize(n_chan);
+   counts_this_frame.resize(n_chan);
+   max_instant_count_rate.resize(n_chan);
+   min_arrival_time_diff.resize(n_chan);
+   last_photon_time.resize(n_chan);
 
    resize(n_x, n_y);
 
@@ -120,6 +127,27 @@ void FLIMage::addEvent(const TcspcEvent& p)
          frame_duration = 0;
       }
 
+      // Calculate photon rates
+      if (frame_idx >= 0)
+      {
+         double frame_time = p.macro_time - last_frame_marker_time;
+         frame_time *= macro_resolution_ps * 1e-12;
+         for (int i = 0; i < n_chan; i++)
+         {
+            count_rate[i] = counts_this_frame[i] / frame_time;
+            counts_this_frame[i] = 0;
+
+            if (min_arrival_time_diff[i] > 0)
+               max_instant_count_rate[i] = 1e12 / (min_arrival_time_diff[i] * macro_resolution_ps);
+            else
+               max_instant_count_rate[i] = 0;
+            min_arrival_time_diff[i] = std::numeric_limits<uint64_t>::max();
+            
+         }
+         last_frame_marker_time = p.macro_time;
+         emit countRatesUpdated();
+      }
+        
       frame_idx++;
       cur_x = -1;
       cur_y = -1;
@@ -155,6 +183,15 @@ void FLIMage::addEvent(const TcspcEvent& p)
             float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
             mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity * time_resolution_ps;
             next_decay[p.channel][p.micro_time]++;
+
+            counts_this_frame[p.channel]++;
+
+            double time_diff = (p.macro_time - last_photon_time[p.channel]) * time_resolution_ps;
+            
+            if (time_diff < min_arrival_time_diff[p.channel])
+               min_arrival_time_diff[p.channel] = time_diff;
+
+            last_photon_time[p.channel] = p.macro_time;
          }
 
          if (construct_histogram)

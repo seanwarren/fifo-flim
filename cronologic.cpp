@@ -25,7 +25,7 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   cur_flimage = std::make_shared<FLIMage>(bin_size_ps, 5, 3);
+   cur_flimage = std::make_shared<FLIMage>(bin_size_ps, bin_size_ps, 5, 3);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
