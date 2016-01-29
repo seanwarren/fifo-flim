@@ -22,15 +22,19 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording)
    {
-      data_stream.writeRawData(reinterpret_cast<const char*>(&evt), sizeof(evt));
-      /*
-      buffer[buffer_pos++] = evt;
-      if (buffer_pos == buffer.size())
+      if (use_compression)
       {
-         lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(TcspcEvent)*buffer.size());
-         buffer_pos = 0;
+         buffer[buffer_pos++] = evt;
+         if (buffer_pos == buffer.size())
+         {
+            lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(TcspcEvent)*buffer.size());
+            buffer_pos = 0;
+         }
       }
-      */
+      else
+      {
+         data_stream.writeRawData(reinterpret_cast<const char*>(&evt), sizeof(evt));
+      }
    }
 }
 

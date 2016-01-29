@@ -5,6 +5,7 @@
 #include <opencv2/core.hpp>
 #include <iostream>
 #include <fstream>
+#include <mutex>
 #include "TcspcEvent.h"
 
 class FLIMage : public QObject, public TcspcEventConsumer
@@ -12,10 +13,20 @@ class FLIMage : public QObject, public TcspcEventConsumer
    Q_OBJECT
 public:
 
-   FLIMage(int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
+   FLIMage(float time_resolution_ps, int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
 
-   cv::Mat getIntensity() { return intensity; }
-   cv::Mat getMeanArrivalTime() { return mean_arrival_time; }
+   cv::Mat getIntensity() 
+   {
+      std::lock_guard<std::mutex> lk(cv_mutex);
+      return intensity.clone(); 
+   }
+
+   cv::Mat getMeanArrivalTime() 
+   { 
+      std::lock_guard<std::mutex> lk(cv_mutex);
+      return mean_arrival_time.clone();
+   }
+
    int getNumChannels() { return n_chan; }
 
    void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
@@ -54,6 +65,7 @@ protected:
    cv::Mat intensity;
    cv::Mat sum_time;
    cv::Mat mean_arrival_time;
+   float time_resolution_ps;
 
    short sdt_header;
    std::vector<quint16> cur_histogram;
@@ -68,4 +80,5 @@ protected:
 
    bool using_pixel_markers = false;
 
+   std::mutex cv_mutex;
 };

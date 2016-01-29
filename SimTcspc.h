@@ -24,7 +24,7 @@ public:
    size_t readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
 
    virtual double getSyncRateHz() { return 1e12/T; };
-   virtual double getMicroBaseResolutionPs() { return T / (1 << n_bits); }
+   virtual double getMicroBaseResolutionPs() { return time_resolution_ps; }
    virtual double getMacroBaseResolutionPs() { return T; }
    virtual int getNumChannels() { return n_chan; }
    virtual int getNumTimebins() { return 1 << n_bits; };
@@ -49,6 +49,7 @@ private:
    int cur_py = n_px;
 
    double T = 12500;
+   double time_resolution_ps;
 
    int pixel_duration = 10000;
    int inter_line_duration = 100000;

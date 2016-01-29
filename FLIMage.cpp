@@ -1,7 +1,8 @@
 #include "FLIMage.h"
 
-FLIMage::FLIMage(int histogram_bits, int n_chan, QObject* parent) :
+FLIMage::FLIMage(float time_resolution_ps, int histogram_bits, int n_chan, QObject* parent) :
    QObject(parent),
+   time_resolution_ps(time_resolution_ps),
    n_chan(n_chan)
 {
    histogram_bits = std::min(histogram_bits, 12);
@@ -21,6 +22,8 @@ FLIMage::FLIMage(int histogram_bits, int n_chan, QObject* parent) :
 
 void FLIMage::resize(int n_x_, int n_y_)
 {
+   std::lock_guard<std::mutex> lk(cv_mutex);
+
    n_x = n_x_;
    n_y = n_y_;
 
@@ -150,7 +153,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
 
             float p_intensity = (++intensity.at<quint16>(tx, ty));
             float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
-            mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity;
+            mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity * time_resolution_ps;
             next_decay[p.channel][p.micro_time]++;
          }
 

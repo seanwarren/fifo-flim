@@ -13,8 +13,10 @@ using namespace std;
 SimTcspc::SimTcspc(QObject* parent) :
 FifoTcspc(parent)
 {
+   time_resolution_ps = T / (1 << n_bits);
+
    processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
-   cur_flimage = make_shared<FLIMage>(8, 4);
+   cur_flimage = make_shared<FLIMage>(time_resolution_ps, 8, 4);
 
    processor->addTcspcEventConsumer(cur_flimage);
    StartThread();
