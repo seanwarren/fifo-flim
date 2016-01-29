@@ -28,7 +28,7 @@ public:
    }
 
    int getNumChannels() { return n_chan; }
-
+   double getTimeResolution() { return time_resolution_ps; }
    void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
  
    std::list<std::vector<quint16>>& getHistogramData() { return image_histograms; }
