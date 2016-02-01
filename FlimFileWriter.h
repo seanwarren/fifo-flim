@@ -37,11 +37,13 @@ public:
    void eventStreamAboutToStart();
    void eventStreamFinished();
 
+   void nextImageStarted();
+
    void addEvent(const TcspcEvent& evt);
 
    bool isProcessingEvents() { return recording; }
 
-public:
+protected:
 
    QString folder;
    QString file_name;
@@ -55,6 +57,7 @@ public:
    bool running = false;
 
    void writeFileHeader();
+   void openFile();
 
    void writeTag(const char* tag, double value);
    void writeTag(const char* tag, int64_t value);
@@ -68,5 +71,6 @@ public:
    FifoTcspc* tcspc = nullptr;
    std::vector<TcspcEvent> buffer;
    int buffer_pos = 0;
+   int image_index = 0;
    bool use_compression = false;
 };

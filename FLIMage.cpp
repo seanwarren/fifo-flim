@@ -202,7 +202,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
       }
    }
 
-   if (QTime::currentTime() > next_refresh)
+   if (QTime::currentTime() > next_refresh) // TODO: move this somewhere else
    {
       decay = next_decay;
 

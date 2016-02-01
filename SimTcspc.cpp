@@ -32,6 +32,8 @@ void SimTcspc::init()
 
 void SimTcspc::startModule()
 {
+   cur_px = n_px;
+   cur_py = n_px;
 
 }
 

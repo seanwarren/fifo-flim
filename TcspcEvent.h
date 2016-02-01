@@ -36,9 +36,9 @@ class TcspcEventConsumer
 {
 public:
 
-
    virtual void eventStreamAboutToStart() {};
    virtual void eventStreamFinished() {};
+   virtual void nextImageStarted() {};
    virtual void addEvent(const TcspcEvent& evt) = 0;
    virtual bool isProcessingEvents() { return true; };
 

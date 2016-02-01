@@ -42,14 +42,18 @@ public:
 
    virtual void init() {};
 
-   void setScanning(bool scanning);
-   void startScanning();
-   void stopScanning();
+   void setLive(bool live);
 
-   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
+   Q_INVOKABLE void startAcquisition();
+   Q_INVOKABLE void cancelAcquisition();
+
    void addTcspcEventConsumer(std::shared_ptr<TcspcEventConsumer> consumer) { processor->addTcspcEventConsumer(consumer); }
 
+   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
+   void setNumImages(int n_images_) { n_images = n_images_; };
+
    int getFrameAccumulation() { return frame_accumulation; }
+   int getNumImages() { return n_images; };
 
    virtual int getNumChannels() = 0;
    virtual int getNumTimebins() = 0;
@@ -63,17 +67,23 @@ public:
 
    std::shared_ptr<FLIMage> getPreviewFLIMage() { return cur_flimage; };
 
+   void frameIncremented();
 
 signals:
 
    void recordingStatusChanged(bool recording);
    void ratesUpdated(FlimRates rates);
    void fifoUsageUpdated(float usage);
+   void acquisitionStatusChanged(bool acq_in_progress);
+   void progressUpdated(double progress);
 
 protected:
 
    void startFIFO();
    void stopFIFO();
+
+   void startScanning();
+   void stopScanning();
 
    virtual void configureModule() = 0;
    virtual void startModule() {};
@@ -82,11 +92,17 @@ protected:
    std::shared_ptr<FLIMage> cur_flimage;
 
    int frame_accumulation = 1;
+   int n_images = 1;
+
+   int frame_idx = -1;
 
    bool scanning = false;
+   bool live = false;
+   bool acq_in_progress = false;
+   int acq_idx = 0;
 
-   int packets_read = 0;
-   int packets_processed = 0;
+   uint64_t packets_read = 0;
+   uint64_t packets_processed = 0;
 
    EventProcessor* processor;
 };

@@ -49,7 +49,7 @@ public:
       
       while (remaining_bytes > 0)
       {
-         int msg_bytes = std::min(max_message_bytes, remaining_bytes);
+         int msg_bytes = (int) std::min(max_message_bytes, remaining_bytes);
          
          for(size_t i=0; i<msg_bytes; i++)
             ring_buf[cur_pos_ring+i] = data[cur_pos_input + i];

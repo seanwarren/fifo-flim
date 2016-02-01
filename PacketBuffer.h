@@ -25,6 +25,8 @@ public:
    void reset()
    {
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
+      fill_idx = 0;
+      process_idx = 0;
    }
 
    std::vector<T>* getNextBufferToFill()
