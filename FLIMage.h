@@ -81,7 +81,7 @@ protected:
    std::vector<double> max_instant_count_rate;
 
    std::vector<uint64_t> counts_this_frame;
-   std::vector<uint64_t> last_photon_time;
+   std::vector<double> last_photon_time;
    std::vector<uint64_t> min_arrival_time_diff;
    uint64_t last_frame_marker_time;
 

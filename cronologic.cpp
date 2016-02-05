@@ -103,7 +103,7 @@ void Cronologic::configureCard()
 
 
    for (int i = 1; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
-      config.dc_offset[i] = -0.180;
+      config.dc_offset[i] = -0.090;
 
    config.dc_offset[4] = 1; // arduino signal is only ~1.8V driving 50Ohm load
    config.trigger[4].rising = true;
@@ -227,6 +227,8 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
          {
+            if (idx >= buffer.size())
+               buffer.resize(idx * 2);
 
             cl_event evt;
             evt.hit_fast = *(packet_data + i);
@@ -296,7 +298,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          }
          p = crono_next_packet(p);
       }
-   } while (idx < (buffer_length * 0.8));
+   } while (idx < (buffer_length * 0.5));
 
    return idx;
 }
