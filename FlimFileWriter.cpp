@@ -5,9 +5,6 @@
 
 void FlimFileWriter::eventStreamAboutToStart()
 {
-   if (recording)
-      writeFileHeader();
-
    running = true;
    buffer.resize(1024);
 };
@@ -17,10 +14,15 @@ void FlimFileWriter::eventStreamFinished()
    running = false;
 };
 
+void FlimFileWriter::nextImageStarted()
+{
+   image_index++;
+   openFile();
+}
 
 void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
-   if (recording)
+   if (recording && (image_index > 0))
    {
       if (use_compression)
       {
@@ -73,39 +75,47 @@ void FlimFileWriter::writeFileHeader()
 
 void FlimFileWriter::startRecording(const QString& specified_file_name)
 {
-   QString file_name = specified_file_name;
-
    if (recording)
       return;
+
+   file_name = specified_file_name;
 
    if (file_name == "")
    {
       QString folder = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-      folder.append("/FLIM data.spc");
-      file_name = QFileDialog::getSaveFileName(nullptr, "Choose a file name", folder, "SPC file (*.spc)");
+      folder.append("/FLIM data.ffd");
+      file_name = QFileDialog::getSaveFileName(nullptr, "Choose a file name", folder, "FFD file (*.ffd)");
    }
 
-   if (!file_name.isEmpty())
-   {
-
-      file.setFileName(file_name);
-      file.open(QIODevice::WriteOnly);
-      data_stream.setDevice(&file);
-      data_stream.setByteOrder(QDataStream::LittleEndian);
-      lz4_stream.setDevice(&file);
-
-      if (running)
-         writeFileHeader();
-
-      recording = true;
-   }
+   recording = true;
 }
+
+void FlimFileWriter::openFile()
+{
+   if (file.isOpen())
+      file.close();
+
+   QString new_ext = QString("_%1.ffd").arg(image_index, 3, 10, QChar('0'));
+   QString file_name_with_number = file_name;
+   file_name_with_number.replace(".ffd", new_ext);
+
+   std::string fn = file_name_with_number.toStdString();
+   
+   file.setFileName(file_name_with_number);
+   file.open(QIODevice::WriteOnly);
+   data_stream.setDevice(&file);
+   data_stream.setByteOrder(QDataStream::LittleEndian);
+   lz4_stream.setDevice(&file);
+
+   writeFileHeader();
+}
+
+
 
 void FlimFileWriter::stopRecording()
 {
    recording = false;
 
-//   lz4_stream.close();
    data_stream.setDevice(nullptr);
    file.close();
 }

@@ -12,13 +12,58 @@ FifoTcspc::FifoTcspc(QObject* parent) :
 {
 }
 
-void FifoTcspc::setScanning(bool scanning_)
+void FifoTcspc::setLive(bool live_)
 {
-	if (scanning_ & !scanning)
-		startScanning();
-	else if (!scanning_ & scanning)
-		stopScanning();
+   assert(!acq_in_progress);
+
+   processor->runContinuously();
+
+   if (live_ & !live)
+      startScanning();
+   else if (!live_ & live)
+      stopScanning();
+
+   live = live_;
 }
+
+void FifoTcspc::startAcquisition()
+{
+   assert(!live);
+
+   processor->setFrameIncrementCallback(std::bind(&FifoTcspc::frameIncremented, this));
+   processor->setFramesPerImage(frame_accumulation);
+   processor->setNumImages(n_images);
+   processor->reset();
+
+   acq_in_progress = true;
+   acq_idx = 0;
+   frame_idx = -1; // first frame marker will set to zero
+   startScanning();
+
+   emit acquisitionStatusChanged(acq_in_progress);
+}
+
+void FifoTcspc::cancelAcquisition()
+{
+   if (!acq_in_progress)
+      return;
+
+   acq_in_progress = false;
+   stopScanning();
+
+   emit acquisitionStatusChanged(acq_in_progress);
+}
+
+void FifoTcspc::frameIncremented()
+{
+   frame_idx++;
+   double progress = static_cast<double>(frame_idx) / (n_images * frame_accumulation);
+   emit progressUpdated(progress);
+
+   if (frame_idx == (n_images * frame_accumulation))
+      QMetaObject::invokeMethod(this, "cancelAcquisition"); // we want to do this on the correct thread
+}
+
 
 void FifoTcspc::startScanning()
 {
@@ -48,10 +93,11 @@ void FifoTcspc::startFIFO()
 
 	scanning = true;
 
+   startModule();
+
 	// Start thread
    processor->start();
 
-   startModule();
 }
 
 void FifoTcspc::stopFIFO()
