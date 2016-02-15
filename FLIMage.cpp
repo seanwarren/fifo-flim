@@ -131,15 +131,14 @@ void FLIMage::addEvent(const TcspcEvent& p)
       // Calculate photon rates
       if (frame_idx >= 0)
       {
-         double frame_time = p.macro_time - last_frame_marker_time;
-         frame_time *= macro_resolution_ps * 1e-12;
+         double total_frame_time = n_y * line_duration * macro_resolution_ps * 1e-12;
          for (int i = 0; i < n_chan; i++)
          {
-            count_rate[i] = counts_this_frame[i] / frame_time;
+            count_rate[i] = counts_this_frame[i] / total_frame_time;
             counts_this_frame[i] = 0;
 
             if (min_arrival_time_diff[i] > 0)
-               max_instant_count_rate[i] = 1e12 / (min_arrival_time_diff[i] * macro_resolution_ps);
+               max_instant_count_rate[i] = 1e12 / min_arrival_time_diff[i];
             else
                max_instant_count_rate[i] = 0;
             min_arrival_time_diff[i] = std::numeric_limits<uint64_t>::max();
@@ -187,12 +186,16 @@ void FLIMage::addEvent(const TcspcEvent& p)
 
             counts_this_frame[p.channel]++;
 
-            double time_diff = (p.macro_time - last_photon_time[p.channel]) * time_resolution_ps;
+            double cur_time = p.macro_time * macro_resolution_ps + p.micro_time * time_resolution_ps;
+            double time_diff = (cur_time - last_photon_time[p.channel]);
             
+            if (time_diff == 0)
+               int a = 1;
+
             if (time_diff < min_arrival_time_diff[p.channel])
                min_arrival_time_diff[p.channel] = time_diff;
 
-            last_photon_time[p.channel] = p.macro_time;
+            last_photon_time[p.channel] = cur_time;
          }
 
          if (construct_histogram)

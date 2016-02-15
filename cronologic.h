@@ -82,10 +82,17 @@ public:
 
       channel = readBits(p, 4);
       flags = readBits(p, 4);
-      micro_time = (readBits(p, 24) + 10) % 25;
-
+      micro_time = readBits(p, 24);
+      
       mark = readBits(s, 4);
       macro_time = readBits(s, 60);
+
+      //micro_time += 2; // TODO: offset 
+
+      macro_time += micro_time;
+      micro_time = micro_time % 25;
+      macro_time -= micro_time; // estimate true start pulse
+
    }
 
    bool isPixelClock() const { return mark & MARK_PIXEL; }
