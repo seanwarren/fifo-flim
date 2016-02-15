@@ -13,7 +13,7 @@ class FLIMage : public QObject, public TcspcEventConsumer
    Q_OBJECT
 public:
 
-   FLIMage(float time_resolution_ps, float macro_resolution_ps, int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
+   FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro_resolution_ps, int histogram_bits = 0, int n_chan = 1, QObject* parent = 0);
 
    cv::Mat getIntensity() 
    {

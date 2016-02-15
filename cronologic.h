@@ -15,6 +15,8 @@ class Cronologic : public FifoTcspc
 {
 	Q_OBJECT
 
+   enum AcquisitionMode { FLIM, PLIM } ;
+
 public:
    Cronologic(QObject* parent);
    ~Cronologic();
@@ -54,6 +56,7 @@ private:
    bool line_active = false;
    uint64_t packet_count = 0;
    uint64_t last_update_time = 0;
+   uint64_t last_plim_start_time = 0;
 
    std::vector<uint32_t> t_offset;
 
@@ -61,16 +64,18 @@ private:
 
    FlimRates rates;
 
+   AcquisitionMode acq_mode;
+
    QString board_name;
 };
 
 
-class CLEvent : public TcspcEvent
+class CLFlimEvent : public TcspcEvent
 {
 public:
 
 
-   CLEvent(cl_event evt)
+   CLFlimEvent(cl_event evt)
    {
       uint32_t p = evt.hit_fast;
       uint64_t s = evt.hit_slow;
@@ -85,6 +90,36 @@ public:
 
    bool isPixelClock() const { return mark & MARK_PIXEL; }
    bool isLineStartClock() const { return mark & MARK_LINE_START; }  
+   bool isLineEndClock() const { return mark & MARK_LINE_START; }
+   bool isFrameClock() const { return mark & MARK_FRAME; }
+   bool isValidPhoton() const { return mark == MARK_PHOTON; }
+
+   uint32_t flags;
+
+private:
+
+};
+
+class CLPlimEvent : public TcspcEvent
+{
+public:
+
+
+   CLPlimEvent(cl_event evt)
+   {
+      uint32_t p = evt.hit_fast;
+      uint64_t s = evt.hit_slow;
+
+      channel = readBits(p, 4);
+      flags = readBits(p, 4);
+      micro_time = readBits(p, 24);
+
+      mark = readBits(s, 4);
+      macro_time = readBits(s, 60);
+   }
+
+   bool isPixelClock() const { return mark & MARK_PIXEL; }
+   bool isLineStartClock() const { return mark & MARK_LINE_START; }
    bool isLineEndClock() const { return mark & MARK_LINE_START; }
    bool isFrameClock() const { return mark & MARK_FRAME; }
    bool isValidPhoton() const { return mark == MARK_PHOTON; }

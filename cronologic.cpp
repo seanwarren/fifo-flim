@@ -20,12 +20,17 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   processor = createEventProcessor<Cronologic, CLEvent, cl_event>(this, 1000, 10000);
+   acq_mode = PLIM;
+
+   if (acq_mode == FLIM)
+      processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 1000, 10000);
+   else
+      processor = createEventProcessor<Cronologic, CLPlimEvent, cl_event>(this, 1000, 10000);
 
    checkCard();
    configureCard();
    
-   cur_flimage = std::make_shared<FLIMage>(bin_size_ps, bin_size_ps, 5, 3);
+   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, bin_size_ps, bin_size_ps, 5, 3);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
@@ -100,7 +105,6 @@ void Cronologic::configureCard()
       config.channel[i].start = 0;				// discard hits with fine timestamp less than start
       config.channel[i].stop = 1<<30; //25 * 6 - 1; // 1 << 24;		// discard hits with fine timestamp more than stop
    }
-
 
    for (int i = 1; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
       config.dc_offset[i] = -0.180;
@@ -182,7 +186,6 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             break;
          continue;
       }
-
       continues = 0;
       
       CHECK(read_data.error_code);
@@ -204,7 +207,6 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          }
          packet_count++;
 
-
          if ((idx + 1) >= buffer_length)
             break;
 
@@ -214,14 +216,20 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
          if (p->flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
             std::cout << "Slow sync\n";
-         //if (p->flags & TIMETAGGER4_PACKET_FLAG_DMA_FIFO_FULL)
-         //   std::cout << "FIFO full\n";
 
          if (p->flags > 1)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
          uint64_t hit_slow = p->timestamp;
          hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
+
+         if (acq_mode == AcquisitionMode::PLIM)
+         {
+            // Insert pixel marker for PLIM
+            cl_event evt;
+            evt.hit_slow = hit_slow | MARK_PIXEL;
+            buffer[idx++] = evt;
+         }
 
          int ignore = false;
          uint32_t* packet_data = (uint32_t*)(p->data);
@@ -230,12 +238,13 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
             cl_event evt;
             evt.hit_fast = *(packet_data + i);
+            int channel = evt.hit_fast & 0xF;
             uint64_t marker = 0;
 
             // If channel == 3 then we've got a marker not a photon
             // We determine what kind of marker based on the duration 
             // of the marker, i.e. time between rising and falling edge
-            if ((evt.hit_fast & 0xF) == 3)
+            if (channel == 3)
             {
                // Is the marker the rising or falling edge?
                bool rising = evt.hit_fast & 0x10;
