@@ -32,7 +32,7 @@ public:
 
    void reset()
    { 
-      frame_idx = 0;
+      frame_idx = -1;
       image_idx = -1; // goes to zero on first frame marker
    }
 
@@ -49,8 +49,8 @@ protected:
 
    bool running;
    int frames_per_image = 1;
-   int frame_idx = 0;
-   int image_idx = 0;
+   int frame_idx = -1;
+   int image_idx = -1;
    int n_images = 1;
    bool run_continuously = true;
 };
@@ -117,10 +117,15 @@ void EventProcessorPrivate<Event, evt>::processorThread()
                   if ((frame_idx + frame_increment) % frames_per_image == 0)
                   {
                      image_increment++;
-                     if (image_idx+image_increment == n_images)
+                     if (image_idx + image_increment == n_images)
+                     {
+                        consumer->imageSequenceFinished();
                         break; // don't send any more events
+                     }
                      else
+                     {
                         consumer->nextImageStarted();
+                     }
                   }
                }
                consumer->addEvent(evt);

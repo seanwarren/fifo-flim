@@ -182,7 +182,9 @@ void FLIMage::addEvent(const TcspcEvent& p)
             float p_intensity = (++intensity.at<quint16>(tx, ty));
             float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
             mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity * time_resolution_ps;
-            next_decay[p.channel][p.micro_time]++;
+            
+            if (p.micro_time < n_bins)
+               next_decay[p.channel][p.micro_time]++;
 
             counts_this_frame[p.channel]++;
 

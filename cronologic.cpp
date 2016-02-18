@@ -20,7 +20,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   acq_mode = PLIM;
+   acq_mode = FLIM;
 
    if (acq_mode == FLIM)
       processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 1000, 10000);
@@ -107,7 +107,7 @@ void Cronologic::configureCard()
    }
 
    for (int i = 1; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
-      config.dc_offset[i] = -0.090;
+      config.dc_offset[i] = -0.060;
 
    config.dc_offset[4] = 1; // arduino signal is only ~1.8V driving 50Ohm load
    config.trigger[4].rising = true;

@@ -38,6 +38,7 @@ public:
    void eventStreamFinished();
 
    void nextImageStarted();
+   void imageSequenceFinished();
 
    void addEvent(const TcspcEvent& evt);
 

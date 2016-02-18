@@ -20,6 +20,14 @@ void FlimFileWriter::nextImageStarted()
    openFile();
 }
 
+void FlimFileWriter::imageSequenceFinished()
+{
+   if (file.isOpen())
+      file.close();
+   recording = false;
+   file_name = "";
+}
+
 void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording && (image_index > 0))
@@ -88,6 +96,7 @@ void FlimFileWriter::startRecording(const QString& specified_file_name)
    }
 
    recording = true;
+   image_index = 0;
 }
 
 void FlimFileWriter::openFile()

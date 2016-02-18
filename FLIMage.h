@@ -38,7 +38,7 @@ public:
    std::vector<double>& getMaxInstantCountRates() { return max_instant_count_rate; };
 
    void addEvent(const TcspcEvent& evt);
-
+   void nextImageStarted() {};
 
 signals:
    void decayUpdated();

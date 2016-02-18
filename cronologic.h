@@ -30,7 +30,7 @@ public:
    double getMicroBaseResolutionPs() { return bin_size_ps; }
    double getMacroBaseResolutionPs() { return bin_size_ps; }
    int getNumChannels() { return 3; } // TODO
-   int getNumTimebins() { return 25; } // TODO
+   int getNumTimebins() { return (acq_mode == FLIM) ? 25 : 255; } // TODO
 
 private:
 
