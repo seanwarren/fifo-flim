@@ -26,6 +26,9 @@ FifoTcspc(parent)
       processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 1000, 10000);
    else
       processor = createEventProcessor<Cronologic, CLPlimEvent, cl_event>(this, 1000, 10000);
+   
+   threshold = { -60.0, -60.0, -60.0 };
+   time_shift = { 0, 0, 0 };
 
    checkCard();
    configureCard();
@@ -36,6 +39,109 @@ FifoTcspc(parent)
 
    StartThread();
 }
+
+enum ParameterClass { Threshold, TimeShift, Unknown };
+
+ParameterClass getParameterClass(const QString& parameter, ParameterType type, int& channel)
+{
+   if (parameter.startsWith("Threshold_") && type == ParameterType::Float)
+   {
+      channel = parameter.mid(10).toInt();
+      if (channel >= 0 && channel <= 3)
+         return Threshold;
+      else
+         return Unknown;
+   }
+   else if (parameter.startsWith("TimeShift_") && type == ParameterType::Integer)
+   {
+      channel = parameter.mid(10).toInt();
+      if (channel >= 0 && channel <= 3)
+         return TimeShift;
+      else
+         return Unknown;
+   }
+
+   channel = 0;
+   return Unknown;
+
+}
+
+void Cronologic::setParameter(const QString& parameter, ParameterType type, QVariant value) 
+{
+   if (running) return;
+   int channel;
+   ParameterClass c = getParameterClass(parameter, type, channel);
+   if (c == Threshold)
+      threshold[channel] = value.toDouble();
+   else if (c == TimeShift)
+      time_shift[channel] = value.toInt();
+};
+
+QVariant Cronologic::getParameter(const QString& parameter, ParameterType type) 
+{ 
+   int channel;
+   ParameterClass c = getParameterClass(parameter, type, channel);
+   if (c == Threshold)
+      return threshold[channel];
+   else if (c == TimeShift)
+      return time_shift[channel];
+
+   return 0;
+};
+
+QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType type, Limit limit) 
+{ 
+   int channel;
+   ParameterClass c = getParameterClass(parameter, type, channel);
+   if (c == Threshold)
+   {
+      if (limit == Limit::Min)
+         return -1000.0;
+      else
+         return 1000.0;
+   }
+   return QVariant();
+};
+
+QVariant Cronologic::getParameterMinIncrement(const QString& parameter, ParameterType type)
+{ 
+   int channel;
+   ParameterClass c = getParameterClass(parameter, type, channel);
+   if (c == Threshold)
+      return 1.0;
+   else if (c == TimeShift)
+      return 1;
+
+   return 0.0;
+}; 
+
+EnumerationList Cronologic::getEnumerationList(const QString& parameter)
+{ 
+   return EnumerationList(); 
+};
+
+bool Cronologic::isParameterWritable(const QString& parameter)
+{ 
+   return !running; 
+};
+
+bool Cronologic::isParameterReadOnly(const QString& parameter) 
+{ 
+   return false; 
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void Cronologic::checkCard()
 {
@@ -107,7 +213,7 @@ void Cronologic::configureCard()
    }
 
    for (int i = 1; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
-      config.dc_offset[i] = -0.060;
+      config.dc_offset[i] = threshold[i-1] * 1e-3;
 
    config.dc_offset[4] = 1; // arduino signal is only ~1.8V driving 50Ohm load
    config.trigger[4].rising = true;
@@ -139,17 +245,17 @@ void Cronologic::init()
 void Cronologic::startModule()
 {
    last_mark_rise_time = 0;
-
    CHECK(timetagger4_start_tiger(device));
    // start data capture
    CHECK(timetagger4_start_capture(device));
+   running = true;
 }
 
 void Cronologic::stopModule()
 {
    CHECK(timetagger4_stop_tiger(device));
    CHECK(timetagger4_stop_capture(device));
-
+   running = false;
 }
 
 Cronologic::~Cronologic()
@@ -315,7 +421,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
 void Cronologic::configureModule()
 {
-
+   configureCard();
 }
 
 

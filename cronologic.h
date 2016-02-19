@@ -5,6 +5,7 @@
 #include "FLIMage.h"
 #include "FifoTcspc.h"
 
+
 struct cl_event 
 {
    uint32_t hit_fast;
@@ -31,6 +32,14 @@ public:
    double getMacroBaseResolutionPs() { return bin_size_ps; }
    int getNumChannels() { return 3; } // TODO
    int getNumTimebins() { return (acq_mode == FLIM) ? 25 : 255; } // TODO
+
+   void setParameter(const QString& parameter, ParameterType type, QVariant value);
+   QVariant getParameter(const QString& parameter, ParameterType type);
+   QVariant getParameterLimit(const QString& parameter, ParameterType type, Limit limit);
+   QVariant getParameterMinIncrement(const QString& parameter, ParameterType type);
+   EnumerationList getEnumerationList(const QString& parameter);
+   bool isParameterWritable(const QString& parameter);
+   bool isParameterReadOnly(const QString& parameter);
 
 private:
 
@@ -60,7 +69,11 @@ private:
 
    std::vector<uint32_t> t_offset;
 
+   std::vector<double> threshold;
+   std::vector<int> time_shift;
+
    double sync_rate_hz = 0;
+   bool running = false;
 
    FlimRates rates;
 
@@ -86,8 +99,6 @@ public:
       
       mark = readBits(s, 4);
       macro_time = readBits(s, 60);
-
-      //micro_time += 2; // TODO: offset 
 
       macro_time += micro_time;
       micro_time = micro_time % 25;
