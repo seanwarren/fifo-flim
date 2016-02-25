@@ -42,11 +42,11 @@ FifoTcspc(parent)
 
 enum ParameterClass { StartThreshold, Threshold, TimeShift, Unknown };
 
-ParameterClass getParameterClass(const QString& parameter, ParameterType type, int& channel)
+ParameterClass getParameterClass(const QString& parameter, int& channel)
 {
    channel = 0;
 
-   if (parameter.startsWith("Threshold_") && type == ParameterType::Float)
+   if (parameter.startsWith("Threshold_"))
    {
       channel = parameter.mid(10).toInt();
       if ((channel >= 0) && (channel <= 3))
@@ -54,7 +54,7 @@ ParameterClass getParameterClass(const QString& parameter, ParameterType type, i
       else
          return Unknown;
    }
-   else if (parameter.startsWith("Time_Shift_") && type == ParameterType::Integer)
+   else if (parameter.startsWith("Time_Shift_"))
    {
       channel = parameter.mid(11).toInt();
       if ((channel >= 0) && (channel <= 3))
@@ -72,21 +72,26 @@ ParameterClass getParameterClass(const QString& parameter, ParameterType type, i
 
 void Cronologic::setParameter(const QString& parameter, ParameterType type, QVariant value) 
 {
-   if (running) return;
    int channel;
-   ParameterClass c = getParameterClass(parameter, type, channel);
+   ParameterClass c = getParameterClass(parameter, channel);
+
+   if (c == TimeShift)
+      time_shift[channel] = value.toInt();
+
+   if (running) return;
+
    if (c == Threshold)
       threshold[channel] = value.toDouble();
    else if (c == StartThreshold)
       start_threshold = value.toDouble();
-   else if (c == TimeShift)
-      time_shift[channel] = value.toInt();
+
+
 };
 
 QVariant Cronologic::getParameter(const QString& parameter, ParameterType type) 
 { 
    int channel;
-   ParameterClass c = getParameterClass(parameter, type, channel);
+   ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold)
       return threshold[channel];
    else if (c == StartThreshold)
@@ -100,7 +105,7 @@ QVariant Cronologic::getParameter(const QString& parameter, ParameterType type)
 QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType type, Limit limit) 
 { 
    int channel;
-   ParameterClass c = getParameterClass(parameter, type, channel);
+   ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold || c == StartThreshold)
    {
       if (limit == Limit::Min)
@@ -108,13 +113,20 @@ QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType t
       else
          return 1180.0;
    }
+   else if (c == TimeShift)
+   {
+      if (limit == Limit::Min)
+         return 0;
+      else
+         return 25;
+   }
    return QVariant();
 };
 
 QVariant Cronologic::getParameterMinIncrement(const QString& parameter, ParameterType type)
 { 
    int channel;
-   ParameterClass c = getParameterClass(parameter, type, channel);
+   ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold || c == StartThreshold)
       return 1.0;
    else if (c == TimeShift)
@@ -130,7 +142,12 @@ EnumerationList Cronologic::getEnumerationList(const QString& parameter)
 
 bool Cronologic::isParameterWritable(const QString& parameter)
 { 
-   return !running; 
+   int channel;
+   ParameterClass c = getParameterClass(parameter, channel);
+   if (c == Threshold || c == StartThreshold)
+      return !running;
+   else if (c == TimeShift)
+      return true;
 };
 
 bool Cronologic::isParameterReadOnly(const QString& parameter) 
@@ -225,9 +242,14 @@ void Cronologic::configureCard()
    for (int i = 0; i < n_chan; i++)
       config.dc_offset[i+1] = threshold[i] * 1e-3;
 
-   config.dc_offset[4] = 1; // arduino signal is only ~1.8V driving 50Ohm load
-   config.trigger[4].rising = true;
-   config.trigger[4].falling = true;
+   int marker_channel = 3;
+   config.channel[marker_channel].enabled = true;
+   config.channel[marker_channel].start = 0;
+   config.channel[marker_channel].stop = 1 << 30;
+   
+   config.dc_offset[marker_channel+1] = 1; // arduino signal is only ~1.8V driving 50Ohm load
+   config.trigger[marker_channel+1].rising = true;
+   config.trigger[marker_channel+1].falling = true;
 
    // start group on falling edges on the start channel
    config.trigger[0].rising = true;	// disable packet generation on rising edge of start pulse
@@ -355,7 +377,12 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
 
             cl_event evt;
             evt.hit_fast = *(packet_data + i);
+
             int channel = evt.hit_fast & 0xF;
+            
+            if (channel < getNumChannels())
+               evt.hit_fast += time_shift[channel] << 8;
+            
             uint64_t marker = 0;
 
             // If channel == 3 then we've got a marker not a photon
