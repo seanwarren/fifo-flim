@@ -40,30 +40,34 @@ FifoTcspc(parent)
    StartThread();
 }
 
-enum ParameterClass { Threshold, TimeShift, Unknown };
+enum ParameterClass { StartThreshold, Threshold, TimeShift, Unknown };
 
 ParameterClass getParameterClass(const QString& parameter, ParameterType type, int& channel)
 {
+   channel = 0;
+
    if (parameter.startsWith("Threshold_") && type == ParameterType::Float)
    {
       channel = parameter.mid(10).toInt();
-      if (channel >= 0 && channel <= 3)
+      if ((channel >= 0) && (channel <= 3))
          return Threshold;
       else
          return Unknown;
    }
-   else if (parameter.startsWith("TimeShift_") && type == ParameterType::Integer)
+   else if (parameter.startsWith("Time_Shift_") && type == ParameterType::Integer)
    {
-      channel = parameter.mid(10).toInt();
-      if (channel >= 0 && channel <= 3)
+      channel = parameter.mid(11).toInt();
+      if ((channel >= 0) && (channel <= 3))
          return TimeShift;
       else
          return Unknown;
    }
-
-   channel = 0;
+   else if (parameter == "Start_Threshold")
+   {
+      return StartThreshold;
+   }
+   
    return Unknown;
-
 }
 
 void Cronologic::setParameter(const QString& parameter, ParameterType type, QVariant value) 
@@ -73,6 +77,8 @@ void Cronologic::setParameter(const QString& parameter, ParameterType type, QVar
    ParameterClass c = getParameterClass(parameter, type, channel);
    if (c == Threshold)
       threshold[channel] = value.toDouble();
+   else if (c == StartThreshold)
+      start_threshold = value.toDouble();
    else if (c == TimeShift)
       time_shift[channel] = value.toInt();
 };
@@ -83,6 +89,8 @@ QVariant Cronologic::getParameter(const QString& parameter, ParameterType type)
    ParameterClass c = getParameterClass(parameter, type, channel);
    if (c == Threshold)
       return threshold[channel];
+   else if (c == StartThreshold)
+      return start_threshold;
    else if (c == TimeShift)
       return time_shift[channel];
 
@@ -93,12 +101,12 @@ QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType t
 { 
    int channel;
    ParameterClass c = getParameterClass(parameter, type, channel);
-   if (c == Threshold)
+   if (c == Threshold || c == StartThreshold)
    {
       if (limit == Limit::Min)
          return -1000.0;
       else
-         return 1000.0;
+         return 1180.0;
    }
    return QVariant();
 };
@@ -107,7 +115,7 @@ QVariant Cronologic::getParameterMinIncrement(const QString& parameter, Paramete
 { 
    int channel;
    ParameterClass c = getParameterClass(parameter, type, channel);
-   if (c == Threshold)
+   if (c == Threshold || c == StartThreshold)
       return 1.0;
    else if (c == TimeShift)
       return 1;
@@ -196,8 +204,10 @@ void Cronologic::configureCard()
    // of interest have to be set explicitly
    timetagger4_get_default_configuration(device, &config);
 
+   int n_chan = getNumChannels();
+
    // set config of the 4 TDC channels, inputs A - D
-   for (int i = 0; i < TIMETAGGER4_TDC_CHANNEL_COUNT; i++)
+   for (int i = 0; i < n_chan; i++)
    {
       // enable recording hits on TDC channel
       config.channel[i].enabled = true;
@@ -212,8 +222,8 @@ void Cronologic::configureCard()
       config.channel[i].stop = 1<<30; //25 * 6 - 1; // 1 << 24;		// discard hits with fine timestamp more than stop
    }
 
-   for (int i = 1; i < TIMETAGGER4_TDC_CHANNEL_COUNT + 1; i++)
-      config.dc_offset[i] = threshold[i-1] * 1e-3;
+   for (int i = 0; i < n_chan; i++)
+      config.dc_offset[i+1] = threshold[i] * 1e-3;
 
    config.dc_offset[4] = 1; // arduino signal is only ~1.8V driving 50Ohm load
    config.trigger[4].rising = true;
@@ -222,8 +232,7 @@ void Cronologic::configureCard()
    // start group on falling edges on the start channel
    config.trigger[0].rising = true;	// disable packet generation on rising edge of start pulse
    config.trigger[0].falling = false;	// enable packet generation on falling edge of start pulse
-   config.dc_offset[0] = TIMETAGGER4_DC_OFFSET_N_NIM; 
-//   config.dc_offset[0] = TIMETAGGER4_DC_OFFSET_P_LVCMOS_33;
+   config.dc_offset[0] = start_threshold * 1e-3; 
 
    // activate configuration
    CHECK(timetagger4_configure(device, &config));

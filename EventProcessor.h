@@ -167,8 +167,11 @@ void EventProcessorPrivate<Event, evt>::stop()
 {
    running = false;
 
+
    if (reader_thread.joinable())
       reader_thread.join();
+
+   packet_buffer.setStreamFinished();
 
    if (processor_thread.joinable())
       processor_thread.join();

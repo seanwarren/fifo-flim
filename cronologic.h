@@ -69,9 +69,10 @@ private:
 
    std::vector<uint32_t> t_offset;
 
+   double start_threshold;
    std::vector<double> threshold;
    std::vector<int> time_shift;
-
+   
    double sync_rate_hz = 0;
    bool running = false;
 

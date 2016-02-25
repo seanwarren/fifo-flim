@@ -10,6 +10,7 @@ using namespace std;
 FifoTcspc::FifoTcspc(QObject* parent) :
 	ParametricImageSource(parent)
 {
+   control_mutex = new QMutex;
 }
 
 void FifoTcspc::setLive(bool live_)
@@ -102,9 +103,9 @@ void FifoTcspc::startFIFO()
 
 void FifoTcspc::stopFIFO()
 {
-   processor->stop();
    stopModule();
-	scanning = false;
+   processor->stop();
+   scanning = false;
 }
 
 

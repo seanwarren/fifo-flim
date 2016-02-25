@@ -46,7 +46,7 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
          data_stream.writeRawData(reinterpret_cast<const char*>(&evt), sizeof(evt));
       }
    }
-}
+} 
 
 
 void FlimFileWriter::writeFileHeader()
