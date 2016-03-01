@@ -46,11 +46,11 @@ public:
 
    void finishedFillingBuffer(size_t size)
    {
-      // State state of buffer to empty and increment pointer
+      // Set state of buffer to filled and increment pointer
       buffer_size[fill_idx] = size;
       buffer_state[fill_idx] = BufferFilled;
       fill_idx = (fill_idx + 1) % n_buffers;
-	  buffer_cv.notify_all();
+	   buffer_cv.notify_all();
    }
 
    void failedToFillBuffer()

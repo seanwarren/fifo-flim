@@ -111,7 +111,7 @@ void EventProcessorPrivate<Event, evt>::processorThread()
             for (int i = 0; i < n; i++)
             {
                TcspcEvent evt = Event(buffer[i]);
-               if (evt.mark == TcspcEvent::FrameMarker && !run_continuously)
+               if ((evt.mark & TcspcEvent::FrameMarker) && !run_continuously)
                {
                   frame_increment++;
                   if ((frame_idx + frame_increment) % frames_per_image == 0)

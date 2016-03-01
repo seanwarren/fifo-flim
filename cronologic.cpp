@@ -344,17 +344,19 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          }
          packet_count++;
 
-         if ((idx + 1) >= buffer_length)
-            break;
+         int flags = p->flags;
 
          int hit_count = 2 * p->length;
-         if (p->flags & TIMETAGGER4_PACKET_FLAG_ODD_HITS)
+         if (flags & TIMETAGGER4_PACKET_FLAG_ODD_HITS)
               hit_count -= 1;
 
-         if (p->flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
+         flags = flags & 0xFE; // get rid of odd hits flag
+
+
+         if (flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
             std::cout << "Slow sync\n";
 
-         if (p->flags > 1)
+         if (flags)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
          uint64_t hit_slow = p->timestamp;
@@ -368,7 +370,6 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             buffer[idx++] = evt;
          }
 
-         int ignore = false;
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
          {
@@ -384,6 +385,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                evt.hit_fast += time_shift[channel] << 8;
             
             uint64_t marker = 0;
+            int ignore = false;
 
             // If channel == 3 then we've got a marker not a photon
             // We determine what kind of marker based on the duration 
@@ -432,6 +434,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                      else if (marker_length < 210e3)
                      {
                         marker = MARK_LINE_START;
+                        marker = MARK_LINE_START; // 190
                         line_active = true;
                         n_line++;
                         n_pixel = 0;
