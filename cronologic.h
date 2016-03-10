@@ -9,7 +9,7 @@
 struct cl_event 
 {
    uint32_t hit_fast;
-   uint64_t hit_slow;
+   uint32_t hit_slow;
 };
 
 class Cronologic : public FifoTcspc
@@ -66,6 +66,7 @@ private:
    uint64_t packet_count = 0;
    uint64_t last_update_time = 0;
    uint64_t last_plim_start_time = 0;
+   uint64_t macro_time_rollovers = 0;
 
    std::vector<uint32_t> t_offset;
 
@@ -92,30 +93,13 @@ public:
    CLFlimEvent(cl_event evt)
    {
       uint32_t p = evt.hit_fast;
-      uint64_t s = evt.hit_slow;
-
+      
       channel = readBits(p, 4);
-      flags = readBits(p, 4);
+      mark = readBits(p, 4);
       micro_time = readBits(p, 24);
       
-      mark = readBits(s, 4);
-      macro_time = readBits(s, 60);
-
-      macro_time += micro_time;
-      micro_time = micro_time % 25;
-      macro_time -= micro_time; // estimate true start pulse
-
+      macro_time = evt.hit_slow;
    }
-
-   bool isPixelClock() const { return mark & MARK_PIXEL; }
-   bool isLineStartClock() const { return mark & MARK_LINE_START; }  
-   bool isLineEndClock() const { return mark & MARK_LINE_START; }
-   bool isFrameClock() const { return mark & MARK_FRAME; }
-   bool isValidPhoton() const { return mark == MARK_PHOTON; }
-
-   uint32_t flags;
-
-private:
 
 };
 
@@ -130,21 +114,11 @@ public:
       uint64_t s = evt.hit_slow;
 
       channel = readBits(p, 4);
-      flags = readBits(p, 4);
+      uint8_t flags = readBits(p, 4);
       micro_time = readBits(p, 24);
 
       mark = readBits(s, 4);
       macro_time = readBits(s, 60);
    }
-
-   bool isPixelClock() const { return mark & MARK_PIXEL; }
-   bool isLineStartClock() const { return mark & MARK_LINE_START; }
-   bool isLineEndClock() const { return mark & MARK_LINE_START; }
-   bool isFrameClock() const { return mark & MARK_FRAME; }
-   bool isValidPhoton() const { return mark == MARK_PHOTON; }
-
-   uint32_t flags;
-
-private:
 
 };

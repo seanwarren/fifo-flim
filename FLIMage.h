@@ -62,7 +62,7 @@ protected:
    double frame_duration = 0;
 
    bool construct_histogram = false;
-   int n_bins = 0;
+   uint n_bins = 0;
    int bit_shift = 0;
 
    cv::Mat intensity;

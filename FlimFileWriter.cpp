@@ -6,7 +6,7 @@
 void FlimFileWriter::eventStreamAboutToStart()
 {
    running = true;
-   buffer.resize(1024);
+   buffer.resize(1024); // buffer size must be multiple of 2!
 };
 
 void FlimFileWriter::eventStreamFinished()
@@ -32,9 +32,12 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording && (image_index > 0))
    {
+      uint32_t b = (evt.channel) | (evt.mark << 4) | (evt.micro_time << 8);
+
       if (use_compression)
       {
-         buffer[buffer_pos++] = evt;
+         buffer[buffer_pos++] = evt.macro_time;
+         buffer[buffer_pos++] = b;
          if (buffer_pos == buffer.size())
          {
             lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(TcspcEvent)*buffer.size());
@@ -43,7 +46,8 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
       }
       else
       {
-         data_stream.writeRawData(reinterpret_cast<const char*>(&evt), sizeof(evt));
+         data_stream.writeRawData(reinterpret_cast<const char*>(&evt.macro_time), sizeof(evt.macro_time));
+         data_stream.writeRawData(reinterpret_cast<const char*>(&b), sizeof(b));
       }
    }
 } 
@@ -53,7 +57,7 @@ void FlimFileWriter::writeFileHeader()
 {
    // Write header
    quint32 magic_number = 0xF1F0;
-   quint32 format_version = 1;
+   quint32 format_version = 2;
    
    header.clear();
    QBuffer buffer(&header);

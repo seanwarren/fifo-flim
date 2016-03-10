@@ -23,9 +23,9 @@ FifoTcspc(parent)
    acq_mode = FLIM;
 
    if (acq_mode == FLIM)
-      processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 1000, 10000);
+      processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 10000, 10000);
    else
-      processor = createEventProcessor<Cronologic, CLPlimEvent, cl_event>(this, 1000, 10000);
+      processor = createEventProcessor<Cronologic, CLPlimEvent, cl_event>(this, 10000, 10000);
    
    threshold = { -60.0, -60.0, -60.0 };
    time_shift = { 0, 0, 0 };
@@ -38,6 +38,9 @@ FifoTcspc(parent)
    processor->addTcspcEventConsumer(cur_flimage);
 
    StartThread();
+
+   int a = sizeof(TcspcEvent);
+   a = 1;
 }
 
 enum ParameterClass { StartThreshold, Threshold, TimeShift, Unknown };
@@ -236,7 +239,7 @@ void Cronologic::configureCard()
       // do not filter any hits
       // fine timestamp is a 30 bit unsigned int
       config.channel[i].start = 0;				// discard hits with fine timestamp less than start
-      config.channel[i].stop = 1<<30; //25 * 6 - 1; // 1 << 24;		// discard hits with fine timestamp more than stop
+      config.channel[i].stop =  1 << 30;		// discard hits with fine timestamp more than stop
    }
 
    for (int i = 0; i < n_chan; i++)
@@ -360,30 +363,54 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
          uint64_t hit_slow = p->timestamp;
-         hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
+         //hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
 
          if (acq_mode == AcquisitionMode::PLIM)
          {
             // Insert pixel marker for PLIM
             cl_event evt;
-            evt.hit_slow = hit_slow | MARK_PIXEL;
+            evt.hit_slow = hit_slow & 0xFFFFFFFF;
+            evt.hit_fast = MARK_PIXEL << 4;
             buffer[idx++] = evt;
          }
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
-         {
-            if (idx >= buffer.size())
-               buffer.resize(idx * 2);
-
+         {            
             cl_event evt;
             evt.hit_fast = *(packet_data + i);
 
             int channel = evt.hit_fast & 0xF;
             
-            if (channel < getNumChannels())
-               evt.hit_fast += time_shift[channel] << 8;
+            uint64_t micro_time = evt.hit_fast >> 8;
+            uint64_t macro_time = hit_slow;
             
+            if (acq_mode == FLIM)
+            {
+               macro_time += 25 * (micro_time / 25);
+               micro_time = micro_time % 25;
+            }
+            else if (acq_mode == PLIM)
+            {
+              // TODO
+            }
+
+            uint64_t new_macro_time_rollovers = macro_time / (1LL << 32);
+            
+            if ((idx + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
+               buffer.resize(idx * 2);
+            
+            while (new_macro_time_rollovers > macro_time_rollovers)
+            {
+               cl_event rollover_evt;
+               rollover_evt.hit_slow = 0x0;
+               rollover_evt.hit_fast = 0xF;
+               buffer[idx++] = rollover_evt;
+               macro_time_rollovers++;
+            }
+            
+            evt.hit_slow = macro_time & 0xFFFFFFFF;
+
             uint64_t marker = 0;
             int ignore = false;
 
@@ -406,54 +433,57 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                   // We don't want to include rising edge in data stream
                   last_mark_rise_time = time;
                   ignore = true;
+                  
                }  
                else
                {
-                  {
-                     uint64_t marker_length_i = time - last_mark_rise_time;
-                     double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
+                  uint64_t marker_length_i = time - last_mark_rise_time;
+                  double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
 
-                     if (marker_length < 30e3)
+                  if (marker_length < 30e3)
+                  {
+                     if (line_active)
                      {
-                        if (line_active)
-                        {
-                           marker = MARK_PIXEL;
-                           n_pixel++;
-                        }
+                        marker = MARK_PIXEL;
+                        n_pixel++;
                      }
-                     else if (marker_length < 160e3)
-                     {
-                        marker = MARK_FRAME; // 154
-                        n_line = 0;
+                     std::cout << "Unknown length\n";
                      }
-                     else if (marker_length < 180e3)
-                     {
-                        marker = MARK_LINE_END; // 166
-                        line_active = false;
-                     }
-                     else if (marker_length < 210e3)
-                     {
-                        marker = MARK_LINE_START;
-                        marker = MARK_LINE_START; // 190
-                        line_active = true;
-                        n_line++;
-                        n_pixel = 0;
-                     }
+                  else if (marker_length < 160e3)
+                  {
+                     marker = MARK_FRAME; // 154
+                     n_line = 0;
                   }
-                  
-                 last_mark_rise_time = -1;
+                  else if (marker_length < 180e3)
+                  {
+                     marker = MARK_LINE_END; // 166
+                     line_active = false;
+                  }
+                  else if (marker_length < 210e3)
+                  {
+                     marker = MARK_LINE_START; // 190
+                     line_active = true;
+                     n_line++;
+                     n_pixel = 0;
+                  }
+                  else
+                  {
+                     std::cout << "Unknown length\n";
+                  }
+                 
+                  last_mark_rise_time = -1;
                }
             }
 
-            evt.hit_slow = hit_slow | marker;
+            evt.hit_fast = channel | (marker << 4) | (macro_time << 8);
 
             if (!ignore)
                 buffer[idx++] = evt;
          }
+
          p = crono_next_packet(p);
       }
    } while (idx < (buffer_length * 0.5));
-
    return idx;
 }
 
