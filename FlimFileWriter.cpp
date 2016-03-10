@@ -32,22 +32,21 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording && (image_index > 0))
    {
-      uint32_t b = (evt.channel) | (evt.mark << 4) | (evt.micro_time << 8);
 
       if (use_compression)
       {
          buffer[buffer_pos++] = evt.macro_time;
-         buffer[buffer_pos++] = b;
+         buffer[buffer_pos++] = evt.micro_time;
          if (buffer_pos == buffer.size())
          {
-            lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(TcspcEvent)*buffer.size());
+            lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(uint16_t)*buffer.size());
             buffer_pos = 0;
          }
       }
       else
       {
          data_stream.writeRawData(reinterpret_cast<const char*>(&evt.macro_time), sizeof(evt.macro_time));
-         data_stream.writeRawData(reinterpret_cast<const char*>(&b), sizeof(b));
+         data_stream.writeRawData(reinterpret_cast<const char*>(&evt.micro_time), sizeof(evt.micro_time));
       }
    }
 } 

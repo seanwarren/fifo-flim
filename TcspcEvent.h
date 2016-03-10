@@ -13,10 +13,33 @@ public:
       FrameMarker = 8
    };
 
-   uint32_t macro_time;
-   uint32_t micro_time;
-   uint8_t channel;
-   uint8_t mark;
+   uint16_t macro_time;
+   uint16_t micro_time;
+
+   uint8_t channel() const
+   {
+      return micro_time & 0xF;
+   }
+
+   uint16_t microTime() const
+   {
+      return micro_time >> 4;
+   }
+
+   bool isMacroTimeRollover() const 
+   { 
+      return (channel() == 0xF) && (macro_time == 0); 
+   };
+
+   bool isMark() const
+   { 
+      return (channel() == 0xF) && (macro_time != 0); 
+   };
+
+   uint8_t mark() const
+   {
+      return micro_time >> 4;
+   };
 
 protected:
   

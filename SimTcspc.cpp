@@ -16,7 +16,7 @@ FifoTcspc(parent)
    time_resolution_ps = T / (1 << n_bits);
 
    processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
-   cur_flimage = make_shared<FLIMage>(time_resolution_ps, 1e6, 8, 4);
+   cur_flimage = make_shared<FLIMage>(false, time_resolution_ps, 1e6, 8, 4);
 
    processor->addTcspcEventConsumer(cur_flimage);
    StartThread();
@@ -68,17 +68,17 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
       if (cur_py >= (n_px-1))
       {
          cur_py = 0;
-         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_END };
+         addEvent(cur_macro_time, 0, 0, MARK_LINE_END, buffer, idx);
          cur_macro_time += inter_frame_duration; 
-         buffer[idx++] = { cur_macro_time, 0, 0, MARK_FRAME };
-         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_START };
+         addEvent( cur_macro_time, 0, 0, MARK_FRAME, buffer, idx);
+         addEvent(cur_macro_time, 0, 0, MARK_LINE_START, buffer, idx);
       }
       else
       {
          cur_py++;
-         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_END };
+         addEvent(cur_macro_time, 0, 0, MARK_LINE_END, buffer, idx);
          cur_macro_time += inter_line_duration;
-         buffer[idx++] = { cur_macro_time, 0, 0, MARK_LINE_START };
+         addEvent(cur_macro_time, 0, 0, MARK_LINE_START, buffer, idx);
       }
    }
 
@@ -103,7 +103,8 @@ size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
       uint32_t micro_time = static_cast<int>(t * 256);
       uint64_t macro_time = cur_macro_time + (i * pixel_duration) / n;
 
-      buffer[idx++] = { macro_time, micro_time, channel, MARK_PHOTON };
+      addEvent(macro_time, micro_time, channel, MARK_PHOTON , buffer, idx);
+
    }
 
    cur_macro_time += pixel_duration;

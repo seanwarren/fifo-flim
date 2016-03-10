@@ -151,6 +151,8 @@ bool Cronologic::isParameterWritable(const QString& parameter)
       return !running;
    else if (c == TimeShift)
       return true;
+
+   return true;
 };
 
 bool Cronologic::isParameterReadOnly(const QString& parameter) 
@@ -395,7 +397,8 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
               // TODO
             }
 
-            uint64_t new_macro_time_rollovers = macro_time / (1LL << 32);
+            uint64_t div_macro_time = macro_time >> 11;
+            uint64_t new_macro_time_rollovers = div_macro_time / (1<<16);
             
             if ((idx + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
                buffer.resize(idx * 2);
@@ -409,7 +412,7 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                macro_time_rollovers++;
             }
             
-            evt.hit_slow = macro_time & 0xFFFFFFFF;
+            evt.hit_slow = div_macro_time & 0xFFFF;
 
             uint64_t marker = 0;
             int ignore = false;
@@ -475,7 +478,10 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
                }
             }
 
-            evt.hit_fast = channel | (marker << 4) | (macro_time << 8);
+            if (marker)
+               evt.hit_fast = 0xF | (marker << 4);
+            else
+               evt.hit_fast = channel | (micro_time << 4);
 
             if (!ignore)
                 buffer[idx++] = evt;

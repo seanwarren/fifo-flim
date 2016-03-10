@@ -8,8 +8,8 @@
 
 struct cl_event 
 {
-   uint32_t hit_fast;
-   uint32_t hit_slow;
+   uint16_t hit_fast;
+   uint16_t hit_slow;
 };
 
 class Cronologic : public FifoTcspc
@@ -92,12 +92,7 @@ public:
 
    CLFlimEvent(cl_event evt)
    {
-      uint32_t p = evt.hit_fast;
-      
-      channel = readBits(p, 4);
-      mark = readBits(p, 4);
-      micro_time = readBits(p, 24);
-      
+      micro_time = evt.hit_fast;
       macro_time = evt.hit_slow;
    }
 
@@ -110,6 +105,7 @@ public:
 
    CLPlimEvent(cl_event evt)
    {
+      /*
       uint32_t p = evt.hit_fast;
       uint64_t s = evt.hit_slow;
 
@@ -119,6 +115,7 @@ public:
 
       mark = readBits(s, 4);
       macro_time = readBits(s, 60);
+      */
    }
 
 };

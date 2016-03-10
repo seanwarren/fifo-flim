@@ -70,95 +70,104 @@ bool FLIMage::isValidPixel()
 
 void FLIMage::addEvent(const TcspcEvent& p)
 {
-   //photon_events.push_back(p);
-   //PhotonInfo photon(p);
-
-   if (frame_idx >= 0)
+   if (p.isMacroTimeRollover()) // rollover
    {
-      if ((p.mark & TcspcEvent::PixelMarker) && using_pixel_markers)
-      {
-         cur_x++;
-
-         if (isValidPixel() && (frame_idx % frame_accumulation == 0))
-         {
-            intensity.at<quint16>(cur_x, cur_y) = 0;
-            sum_time.at<float>(cur_x, cur_y) = 0;
-            mean_arrival_time.at<float>(cur_x, cur_y) = 0;
-         }
-      }
-
-      if (p.mark & TcspcEvent::LineStartMarker)
-      {
-         line_start_time = p.macro_time;
-         line_active = true;
-
-         cur_x = -1;
-         cur_y++;
-      }
-
-      if (p.mark & TcspcEvent::LineEndMarker)
-      {
-         uint64_t this_line_duration = p.macro_time - line_start_time;
-         frame_duration += this_line_duration;
-
-         line_active = false;
-         num_end++;
-      }
+      macro_time_offset += 0xFFFF;
+      return;
    }
+
+   uint64_t macro_time = p.macro_time + macro_time_offset;
    
-   if (p.mark & TcspcEvent::FrameMarker)
+   if (p.isMark())
    {
-      // Check if we're finished an image
-      if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation-1)))
-      {
-         image_histograms.push_back(cur_histogram);
-         size_t sz = cur_histogram.size();
-         for (int i = 0; i < sz; i++)
-            cur_histogram[i] = 0;
-      }
+      uint8_t mark = p.mark();
 
-      if ((using_pixel_markers==false) && (frame_idx > 0))
-      {
-         int measured_lines = cur_y + 1;
-         line_duration = static_cast<double>(frame_duration) / measured_lines;
-
-         if ((measured_lines != n_y) || (measured_lines != n_x))
-            resize(measured_lines, measured_lines);
-
-         frame_duration = 0;
-      }
-
-      // Calculate photon rates
       if (frame_idx >= 0)
       {
-         double total_frame_time = n_y * line_duration * macro_resolution_ps * 1e-12;
-         for (int i = 0; i < n_chan; i++)
+         if ((mark & TcspcEvent::PixelMarker) && using_pixel_markers)
          {
-            count_rate[i] = counts_this_frame[i] / total_frame_time;
-            counts_this_frame[i] = 0;
+            cur_x++;
 
-            if (min_arrival_time_diff[i] > 0)
-               max_instant_count_rate[i] = 1e12 / min_arrival_time_diff[i];
-            else
-               max_instant_count_rate[i] = 0;
-            min_arrival_time_diff[i] = std::numeric_limits<uint64_t>::max();
-            
+            if (isValidPixel() && (frame_idx % frame_accumulation == 0))
+            {
+               intensity.at<quint16>(cur_x, cur_y) = 0;
+               sum_time.at<float>(cur_x, cur_y) = 0;
+               mean_arrival_time.at<float>(cur_x, cur_y) = 0;
+            }
          }
-         last_frame_marker_time = p.macro_time;
-         emit countRatesUpdated();
-      }
-        
-      frame_idx++;
-      cur_x = -1;
-      cur_y = -1;
-      num_end = -1;
-   }
 
-   if (p.mark == TcspcEvent::Photon)
+         if (mark & TcspcEvent::LineStartMarker)
+         {
+            line_start_time = macro_time;
+            line_active = true;
+
+            cur_x = -1;
+            cur_y++;
+         }
+
+         if (mark & TcspcEvent::LineEndMarker)
+         {
+            uint64_t this_line_duration = macro_time - line_start_time;
+            frame_duration += this_line_duration;
+
+            line_active = false;
+            num_end++;
+         }
+      }
+
+      if (mark & TcspcEvent::FrameMarker)
+      {
+         // Check if we're finished an image
+         if (construct_histogram && (frame_idx % frame_accumulation == (frame_accumulation - 1)))
+         {
+            image_histograms.push_back(cur_histogram);
+            size_t sz = cur_histogram.size();
+            for (int i = 0; i < sz; i++)
+               cur_histogram[i] = 0;
+         }
+
+         if ((using_pixel_markers == false) && (frame_idx > 0))
+         {
+            int measured_lines = cur_y + 1;
+            line_duration = static_cast<double>(frame_duration) / measured_lines;
+
+            if ((measured_lines != n_y) || (measured_lines != n_x))
+               resize(measured_lines, measured_lines);
+
+            frame_duration = 0;
+         }
+
+         // Calculate photon rates
+         if (frame_idx >= 0)
+         {
+            double total_frame_time = n_y * line_duration * macro_resolution_ps * 1e-12;
+            for (int i = 0; i < n_chan; i++)
+            {
+               count_rate[i] = counts_this_frame[i] / total_frame_time;
+               counts_this_frame[i] = 0;
+
+               if (min_arrival_time_diff[i] > 0)
+                  max_instant_count_rate[i] = 1e12 / min_arrival_time_diff[i];
+               else
+                  max_instant_count_rate[i] = 0;
+               min_arrival_time_diff[i] = std::numeric_limits<uint64_t>::max();
+
+            }
+            last_frame_marker_time = macro_time;
+            emit countRatesUpdated();
+         }
+
+         frame_idx++;
+         cur_x = -1;
+         cur_y = -1;
+         num_end = -1;
+      }
+   }
+   else // is photon
    {
       if (!using_pixel_markers && (n_x > 1))
       {
-         cur_x = ((p.macro_time - line_start_time) * n_x) / line_duration;
+         cur_x = ((macro_time - line_start_time) * n_x) / line_duration;
       }
 
       if (isValidPixel()) // is a photon
@@ -172,39 +181,46 @@ void FLIMage::addEvent(const TcspcEvent& p)
             ty = 0;
          }
 
-         if (p.channel < n_chan)
+         uint8_t channel = p.channel();
+
+         if (channel < n_chan)
          {
             assert(tx < n_x);
             assert(ty < n_y);
             assert(tx >= 0);
             assert(ty >= 0);
 
+            uint16_t micro_time = p.microTime();
+
             float p_intensity = (++intensity.at<quint16>(tx, ty));
-            float p_sum_time = (sum_time.at<float>(tx, ty) += p.micro_time);
+            float p_sum_time = (sum_time.at<float>(tx, ty) += micro_time);
             mean_arrival_time.at<float>(tx, ty) = p_sum_time / p_intensity * time_resolution_ps;
             
-            if (p.micro_time < n_bins)
-               next_decay[p.channel][p.micro_time]++;
+            if (micro_time < n_bins)
+               next_decay[channel][micro_time]++;
 
-            counts_this_frame[p.channel]++;
+            counts_this_frame[channel]++;
 
-            double cur_time = p.macro_time * macro_resolution_ps + p.micro_time * time_resolution_ps;
-            double time_diff = (cur_time - last_photon_time[p.channel]);
+            /*
+            double cur_time = macro_time * macro_resolution_ps + p.micro_time * time_resolution_ps;
+            double time_diff = (cur_time - last_photon_time[channel]);
             
             if (time_diff == 0)
                int a = 1;
 
-            if (time_diff < min_arrival_time_diff[p.channel])
-               min_arrival_time_diff[p.channel] = time_diff;
+            if (time_diff < min_arrival_time_diff[channel])
+               min_arrival_time_diff[channel] = time_diff;
 
-            last_photon_time[p.channel] = cur_time;
+            last_photon_time[channel] = cur_time;
+            */
          }
-
+         /*
          if (construct_histogram)
          {
             int bin = p.micro_time >> bit_shift;
             cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
          }
+         */
       }
    }
 

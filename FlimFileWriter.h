@@ -70,7 +70,7 @@ protected:
    void writeTag(const char* tag, uint16_t type, const char* data, uint32_t length);
 
    FifoTcspc* tcspc = nullptr;
-   std::vector<uint32_t> buffer;
+   std::vector<uint16_t> buffer;
    int buffer_pos = 0;
    int image_index = 0;
    bool use_compression = false;
