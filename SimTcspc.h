@@ -85,14 +85,3 @@ protected:
    }
 
 };
-
-
-class SimEvent : public TcspcEvent
-{
-public:
-
-   SimEvent(const sim_event evt)
-   {
-
-   }
-};

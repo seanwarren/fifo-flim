@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QTime>
+#include <QTimer>
 #include <opencv2/core.hpp>
 #include <iostream>
 #include <fstream>
@@ -39,6 +40,8 @@ public:
 
    void addEvent(const TcspcEvent& evt);
    void nextImageStarted() {};
+
+   void refreshDisplay();
 
 signals:
    void decayUpdated();
@@ -85,12 +88,13 @@ protected:
    std::vector<double> last_photon_time;
    std::vector<uint64_t> min_arrival_time_diff;
    uint64_t last_frame_marker_time;
-
-   QTime next_refresh;
-
+    
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;
 
    std::mutex cv_mutex;
+   std::mutex decay_mutex;
+
+   QTimer* timer;
 };

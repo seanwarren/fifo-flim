@@ -8,14 +8,22 @@
 #include "PacketBuffer.h"
 #include "TcspcEvent.h"
 
-// TODO: This class needs to be simplified now - have removed requirement for templates
-
 class EventProcessor
 {
+   typedef std::function<size_t(std::vector<TcspcEvent>& buffer)> ReaderFcn;
+
+
 public:
 
+   EventProcessor(ReaderFcn reader_fcn, int n_buffers, int buffer_length) :
+      packet_buffer(n_buffers, buffer_length),
+      reader_fcn(reader_fcn)
+   {
+
+   }
+
    void start();
-   virtual void stop() = 0;
+   void stop();
 
    template<typename evt>
    std::vector<evt> getNextBufferToFill();
@@ -40,8 +48,11 @@ public:
 
 protected:
 
-   virtual void processorThread() = 0;
-   virtual void readerThread() = 0;
+   void processorThread();
+   void readerThread();
+
+   PacketBuffer<TcspcEvent> packet_buffer;
+   ReaderFcn reader_fcn;
 
    std::thread processor_thread;
    std::thread reader_thread;
@@ -55,132 +66,15 @@ protected:
    int image_idx = -1;
    int n_images = 1;
    bool run_continuously = true;
+
+   template<class Provider>
+   friend std::shared_ptr<EventProcessor> createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
 };
 
-template<class Event>
-class EventProcessorPrivate : public EventProcessor
-{
-   typedef std::function<size_t(std::vector<Event>& buffer)> ReaderFcn;
 
-   EventProcessorPrivate(ReaderFcn reader_fcn, int n_buffers, int buffer_length) :
-      packet_buffer(n_buffers, buffer_length),
-      reader_fcn(reader_fcn)
-   {
-
-   }
-
-   void stop();
-
-protected:
-
-   void processorThread();
-   void readerThread();
-
-   PacketBuffer<Event> packet_buffer;
-   ReaderFcn reader_fcn;
-
-   template<class Provider, class Event>
-   friend EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
-};
-
-template<class Provider, class Event>
-EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length)
+template<class Provider>
+std::shared_ptr<EventProcessor> createEventProcessor(Provider* obj, int n_buffers, int buffer_length)
 {
    auto read_fcn = std::bind(&Provider::readPackets, obj, std::placeholders::_1);
-   return new EventProcessorPrivate<Event>(read_fcn, n_buffers, buffer_length);
-}
-
-
-
-template<class Event>
-void EventProcessorPrivate<Event>::processorThread()
-{
-   size_t n_consumers = consumers.size();
-   while (running)
-   {
-
-		packet_buffer.waitForNextBuffer();
-      size_t n = packet_buffer.getProcessingBufferSize();
-      vector<Event> buffer = packet_buffer.getNextBufferToProcess();
-      int frame_increment = 0;
-      int image_increment = 0;
-
-       for (int c = 0; c < n_consumers; c++)
-      {
-         frame_increment = 0;
-         image_increment = 0;
-         const auto& consumer = consumers[c];
-         if (consumer->isProcessingEvents())
-            for (int i = 0; i < n; i++)
-            {
-               TcspcEvent evt = buffer[i];
-               if (evt.isMark() && (evt.mark() & TcspcEvent::FrameMarker) && !run_continuously)
-               {
-                  frame_increment++;
-                  if ((frame_idx + frame_increment) % frames_per_image == 0)
-                  {
-                     image_increment++;
-                     if (image_idx + image_increment == n_images)
-                     {
-                        consumer->imageSequenceFinished();
-                        break; // don't send any more events
-                     }
-                     else
-                     {
-                        consumer->nextImageStarted();
-                     }
-                  }
-               }
-               consumer->addEvent(evt);
-            }
-      }
-
-      frame_idx += frame_increment;
-      image_idx += image_increment;
-
-      for (int i = 0; i < frame_increment; i++)
-         frame_increment_callback();
-
-      packet_buffer.finishedProcessingBuffer();
-
-   }
-}
-
-template<class Event>
-void EventProcessorPrivate<Event>::readerThread()
-{
-   while (running)
-   {
-      std::vector<Event>* buffer = packet_buffer.getNextBufferToFill();
-
-      if (buffer != nullptr) // failed to get buffer
-      {
-         size_t n_read = reader_fcn(*buffer);
-
-         if (n_read > 0)
-            packet_buffer.finishedFillingBuffer(n_read);
-         else
-            packet_buffer.failedToFillBuffer();
-      }
-   }
-}
-
-template<class Event>
-void EventProcessorPrivate<Event>::stop()
-{
-   running = false;
-
-
-   if (reader_thread.joinable())
-      reader_thread.join();
-
-   packet_buffer.setStreamFinished();
-
-   if (processor_thread.joinable())
-      processor_thread.join();
-
-   for (auto& consumer : consumers)
-      consumer->eventStreamFinished();
-
-  packet_buffer.reset();
+   return std::make_shared<EventProcessor>(read_fcn, n_buffers, buffer_length);
 }

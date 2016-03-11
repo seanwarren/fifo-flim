@@ -24,7 +24,11 @@ FLIMage::FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro
 
    resize(n_x, n_y);
 
-   next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
+   timer = new QTimer(this);
+   timer->setInterval(refresh_time_ms);
+   timer->setSingleShot(false);
+   connect(timer, &QTimer::timeout, this, &FLIMage::refreshDisplay);
+   timer->start();
 }
 
 
@@ -224,15 +228,17 @@ void FLIMage::addEvent(const TcspcEvent& p)
       }
    }
 
-   if (QTime::currentTime() > next_refresh) // TODO: move this somewhere else
+}
+
+void FLIMage::refreshDisplay()
+{
    {
+      std::lock_guard<std::mutex> lk(decay_mutex);
+
       decay = next_decay;
 
       for (int i = 0; i < n_chan; i++)
          std::fill(next_decay[i].begin(), next_decay[i].end(), 0);
-
-      next_refresh = QTime::currentTime().addMSecs(refresh_time_ms);
-      emit decayUpdated();
    }
-
+   emit decayUpdated();
 }

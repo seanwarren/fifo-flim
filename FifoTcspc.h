@@ -104,5 +104,5 @@ protected:
    uint64_t packets_read = 0;
    uint64_t packets_processed = 0;
 
-   EventProcessor* processor;
+   std::shared_ptr<EventProcessor> processor;
 };

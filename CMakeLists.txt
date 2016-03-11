@@ -53,6 +53,7 @@ set(HEADERS
    SimTcspc.h
    EventProcessor.h
    FlimFileWriter.h
+   FlimFileReader.h
    lz4.h
    lz4hc.h
    LZ4Stream.h

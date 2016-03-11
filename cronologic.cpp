@@ -22,7 +22,7 @@ FifoTcspc(parent)
 {
    acq_mode = FLIM;
 
-   processor = createEventProcessor<Cronologic, TcspcEvent>(this, 10000, 10000);
+   processor = createEventProcessor<Cronologic>(this, 10000, 10000);
    
    threshold = { -60.0, -60.0, -60.0 };
    time_shift = { 0, 0, 0 };
