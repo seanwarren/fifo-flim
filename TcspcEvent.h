@@ -40,19 +40,6 @@ public:
    {
       return micro_time >> 4;
    };
-
-protected:
-  
-   template<class T>
-   T readBits(T& p, long n_bits)
-   {
-      T mask = (1LL << n_bits) - 1;
-      T value = p & mask;
-      p = p >> n_bits;
-
-      return value;
-   }
-
 };
 
 class TcspcEventConsumer
