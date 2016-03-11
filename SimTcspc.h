@@ -21,7 +21,7 @@ public:
    ~SimTcspc();
 
    void init();
-   size_t readPackets(std::vector<sim_event>& buffer); // return whether any packets were read
+   size_t readPackets(std::vector<TcspcEvent>& buffer); // return whether any packets were read
 
    virtual double getSyncRateHz() { return 1e12/T; };
    virtual double getMicroBaseResolutionPs() { return time_resolution_ps; }
@@ -60,7 +60,7 @@ private:
 
 protected:
 
-   void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<sim_event>& buffer, int& idx)
+   void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx)
    {
       uint64_t new_macro_time_rollovers = macro_time / 0xFFFF;
 
@@ -69,11 +69,19 @@ protected:
 
       while (new_macro_time_rollovers > macro_time_rollovers)
       {
-         buffer[idx++] = { 0, 0, 0xF, 0xF };
+         buffer[idx++] = { 0, 0xF };
          macro_time_rollovers++;
       }
 
-      buffer[idx++] = { macro_time & 0xFFFF, micro_time, channel, mark };
+      TcspcEvent evt;
+      evt.macro_time = macro_time & 0xFFFF;
+      if (mark != 0)
+         evt.micro_time = 0xF | (mark << 4);
+      else
+         evt.micro_time = channel | (micro_time << 4);
+
+      buffer[idx++] = evt;
+
    }
 
 };
@@ -85,10 +93,6 @@ public:
 
    SimEvent(const sim_event evt)
    {
-      macro_time = evt.macro_time;
-      if (evt.mark != 0)
-         micro_time = 0xF | (evt.mark << 4);
-      else
-         micro_time = evt.channel | (evt.micro_time << 4);
+
    }
 };

@@ -15,7 +15,7 @@ FifoTcspc(parent)
 {
    time_resolution_ps = T / (1 << n_bits);
 
-   processor = createEventProcessor<SimTcspc, SimEvent, sim_event>(this, 1000, 2000);
+   processor = createEventProcessor<SimTcspc, TcspcEvent>(this, 1000, 2000);
    cur_flimage = make_shared<FLIMage>(false, time_resolution_ps, 1e6, 8, 4);
 
    processor->addTcspcEventConsumer(cur_flimage);
@@ -42,9 +42,9 @@ SimTcspc::~SimTcspc()
 }
 
 
-size_t SimTcspc::readPackets(std::vector<sim_event>& buffer)
+size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
 {
-   QThread::usleep(500);
+   QThread::usleep(5);
 
    size_t buffer_length = buffer.size();
 

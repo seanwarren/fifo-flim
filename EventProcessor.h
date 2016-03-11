@@ -8,6 +8,8 @@
 #include "PacketBuffer.h"
 #include "TcspcEvent.h"
 
+// TODO: This class needs to be simplified now - have removed requirement for templates
+
 class EventProcessor
 {
 public:
@@ -55,10 +57,10 @@ protected:
    bool run_continuously = true;
 };
 
-template<class Event, typename evt>
+template<class Event>
 class EventProcessorPrivate : public EventProcessor
 {
-   typedef std::function<size_t(std::vector<evt>& buffer)> ReaderFcn;
+   typedef std::function<size_t(std::vector<Event>& buffer)> ReaderFcn;
 
    EventProcessorPrivate(ReaderFcn reader_fcn, int n_buffers, int buffer_length) :
       packet_buffer(n_buffers, buffer_length),
@@ -74,24 +76,24 @@ protected:
    void processorThread();
    void readerThread();
 
-   PacketBuffer<evt> packet_buffer;
+   PacketBuffer<Event> packet_buffer;
    ReaderFcn reader_fcn;
 
-   template<class Provider, class Event, typename evt>
+   template<class Provider, class Event>
    friend EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length);
 };
 
-template<class Provider, class Event, typename evt>
+template<class Provider, class Event>
 EventProcessor* createEventProcessor(Provider* obj, int n_buffers, int buffer_length)
 {
    auto read_fcn = std::bind(&Provider::readPackets, obj, std::placeholders::_1);
-   return new EventProcessorPrivate<Event, evt>(read_fcn, n_buffers, buffer_length);
+   return new EventProcessorPrivate<Event>(read_fcn, n_buffers, buffer_length);
 }
 
 
 
-template<class Event, typename evt>
-void EventProcessorPrivate<Event, evt>::processorThread()
+template<class Event>
+void EventProcessorPrivate<Event>::processorThread()
 {
    size_t n_consumers = consumers.size();
    while (running)
@@ -99,10 +101,11 @@ void EventProcessorPrivate<Event, evt>::processorThread()
 
 		packet_buffer.waitForNextBuffer();
       size_t n = packet_buffer.getProcessingBufferSize();
-      vector<evt> buffer = packet_buffer.getNextBufferToProcess();
-      int frame_increment;
-      int image_increment;
-      for (int c = 0; c < n_consumers; c++)
+      vector<Event> buffer = packet_buffer.getNextBufferToProcess();
+      int frame_increment = 0;
+      int image_increment = 0;
+
+       for (int c = 0; c < n_consumers; c++)
       {
          frame_increment = 0;
          image_increment = 0;
@@ -110,7 +113,7 @@ void EventProcessorPrivate<Event, evt>::processorThread()
          if (consumer->isProcessingEvents())
             for (int i = 0; i < n; i++)
             {
-               TcspcEvent evt = Event(buffer[i]);
+               TcspcEvent evt = buffer[i];
                if (evt.isMark() && (evt.mark() & TcspcEvent::FrameMarker) && !run_continuously)
                {
                   frame_increment++;
@@ -143,12 +146,12 @@ void EventProcessorPrivate<Event, evt>::processorThread()
    }
 }
 
-template<class Event, typename evt>
-void EventProcessorPrivate<Event, evt>::readerThread()
+template<class Event>
+void EventProcessorPrivate<Event>::readerThread()
 {
    while (running)
    {
-      std::vector<evt>* buffer = packet_buffer.getNextBufferToFill();
+      std::vector<Event>* buffer = packet_buffer.getNextBufferToFill();
 
       if (buffer != nullptr) // failed to get buffer
       {
@@ -162,8 +165,8 @@ void EventProcessorPrivate<Event, evt>::readerThread()
    }
 }
 
-template<class Event, typename evt>
-void EventProcessorPrivate<Event, evt>::stop()
+template<class Event>
+void EventProcessorPrivate<Event>::stop()
 {
    running = false;
 

@@ -19,9 +19,9 @@ void FifoTcspc::setLive(bool live_)
 
    processor->runContinuously();
 
-   if (live_ & !live)
+   if (live_ && !live)
       startScanning();
-   else if (!live_ & live)
+   else if (!live_ && live)
       stopScanning();
 
    live = live_;

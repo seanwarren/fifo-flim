@@ -22,10 +22,7 @@ FifoTcspc(parent)
 {
    acq_mode = FLIM;
 
-   if (acq_mode == FLIM)
-      processor = createEventProcessor<Cronologic, CLFlimEvent, cl_event>(this, 10000, 10000);
-   else
-      processor = createEventProcessor<Cronologic, CLPlimEvent, cl_event>(this, 10000, 10000);
+   processor = createEventProcessor<Cronologic, TcspcEvent>(this, 10000, 10000);
    
    threshold = { -60.0, -60.0, -60.0 };
    time_shift = { 0, 0, 0 };
@@ -302,10 +299,8 @@ Cronologic::~Cronologic()
    timetagger4_close(device);
 }
 
-#define crono_next_packet_2(current) ((crono_packet*) (((__int64) (current)) +( ((current)->type&128?0:1) + 2) * 8))
 
-
-size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
+size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 {
 
    timetagger4_read_in read_config;
@@ -370,21 +365,18 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
          if (acq_mode == AcquisitionMode::PLIM)
          {
             // Insert pixel marker for PLIM
-            cl_event evt;
-            evt.hit_slow = hit_slow & 0xFFFFFFFF;
-            evt.hit_fast = MARK_PIXEL << 4;
-            buffer[idx++] = evt;
+            buffer[idx++] = { hit_slow & 0xFFFF, 0xF | (MARK_PIXEL << 4) };
          }
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
          {            
-            cl_event evt;
-            evt.hit_fast = *(packet_data + i);
+            TcspcEvent evt;
+            evt.micro_time = *(packet_data + i);
 
-            int channel = evt.hit_fast & 0xF;
+            int channel = evt.micro_time & 0xF;
             
-            uint64_t micro_time = evt.hit_fast >> 8;
+            uint64_t micro_time = evt.micro_time >> 8;
             uint64_t macro_time = hit_slow;
             
             if (acq_mode == FLIM)
@@ -405,14 +397,11 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             
             while (new_macro_time_rollovers > macro_time_rollovers)
             {
-               cl_event rollover_evt;
-               rollover_evt.hit_slow = 0x0;
-               rollover_evt.hit_fast = 0xF;
-               buffer[idx++] = rollover_evt;
+               buffer[idx++] = {0x0, 0xF};
                macro_time_rollovers++;
             }
             
-            evt.hit_slow = div_macro_time & 0xFFFF;
+            evt.macro_time = div_macro_time & 0xFFFF;
 
             uint64_t marker = 0;
             int ignore = false;
@@ -423,10 +412,10 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             if (channel == 3)
             {
                // Is the marker the rising or falling edge?
-               bool rising = evt.hit_fast & 0x10;
+               bool rising = evt.micro_time & 0x10;
                
                // Get arrival time of edge
-               int hit_fast = evt.hit_fast;
+               int hit_fast = evt.micro_time;
                uint64_t micro_time = (hit_fast >> 8);
                uint64_t macro_time = p->timestamp;
                uint64_t time = micro_time + macro_time;
@@ -479,9 +468,9 @@ size_t Cronologic::readPackets(std::vector<cl_event>& buffer)
             }
 
             if (marker)
-               evt.hit_fast = 0xF | (marker << 4);
+               evt.micro_time = 0xF | (marker << 4);
             else
-               evt.hit_fast = channel | (micro_time << 4);
+               evt.micro_time = channel | (micro_time << 4);
 
             if (!ignore)
                 buffer[idx++] = evt;

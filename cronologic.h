@@ -24,7 +24,7 @@ public:
 
 	void init();
 
-   size_t readPackets(std::vector<cl_event>& buffer); // return whether any packets were read
+   size_t readPackets(std::vector<TcspcEvent>& buffer); // return whether any packets were read
 
    const QString describe() { return board_name; }
    double getSyncRateHz() { return sync_rate_hz; }
@@ -84,7 +84,7 @@ private:
    QString board_name;
 };
 
-
+/*
 class CLFlimEvent : public TcspcEvent
 {
 public:
@@ -105,7 +105,7 @@ public:
 
    CLPlimEvent(cl_event evt)
    {
-      /*
+      
       uint32_t p = evt.hit_fast;
       uint64_t s = evt.hit_slow;
 
@@ -115,7 +115,8 @@ public:
 
       mark = readBits(s, 4);
       macro_time = readBits(s, 60);
-      */
+      
    }
 
 };
+*/
