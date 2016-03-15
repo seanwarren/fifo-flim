@@ -41,6 +41,9 @@ public:
    void addEvent(const TcspcEvent& evt);
    void nextImageStarted() {};
 
+   void eventStreamFinished() { active = false; };
+   void eventStreamAboutToStart();
+
    void refreshDisplay();
 
 signals:
@@ -64,6 +67,7 @@ protected:
    uint64_t line_start_time = 0;
    double line_duration = 1;
    double frame_duration = 0;
+   bool active = false;
 
    bool construct_histogram = false;
    uint n_bins = 0;

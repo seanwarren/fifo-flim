@@ -29,7 +29,7 @@ public:
    const QString describe() { return board_name; }
    double getSyncRateHz() { return sync_rate_hz; }
    double getMicroBaseResolutionPs() { return bin_size_ps; }
-   double getMacroBaseResolutionPs() { return bin_size_ps; }
+   double getMacroBaseResolutionPs() { return macro_time_resolution_ps; }
    int getNumChannels() { return 3; } // TODO
    int getNumTimebins() { return (acq_mode == FLIM) ? 25 : 255; } // TODO
 
@@ -58,7 +58,10 @@ private:
    timetagger4_device* device;
 
    double bin_size_ps;
+   double macro_time_resolution_ps;
    
+   const int macro_downsample = 7;
+
    uint64_t last_mark_rise_time = -1;
    int n_line = 0;
    int n_pixel = 0;

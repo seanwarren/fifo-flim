@@ -30,7 +30,9 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, bin_size_ps, bin_size_ps, 5, 3);
+   macro_time_resolution_ps = bin_size_ps * (1<<macro_downsample);
+
+   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, bin_size_ps, macro_time_resolution_ps, 5, 3);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
@@ -278,6 +280,8 @@ void Cronologic::init()
 void Cronologic::startModule()
 {
    last_mark_rise_time = 0;
+   macro_time_rollovers = -1;
+
    CHECK(timetagger4_start_tiger(device));
    // start data capture
    CHECK(timetagger4_start_capture(device));
@@ -319,7 +323,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
       if (status > 0)
       {
          QThread::usleep(10);
-         if (continues++ > 1000)
+         if (continues++ > 200)
             break;
          continue;
       }
@@ -372,11 +376,11 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          for (int i = 0; i < hit_count; i++)
          {            
             TcspcEvent evt;
-            evt.micro_time = *(packet_data + i);
+            uint64_t hit_fast = *(packet_data + i);
 
-            int channel = evt.micro_time & 0xF;
+            int channel = hit_fast & 0xF;
             
-            uint64_t micro_time = evt.micro_time >> 8;
+            uint64_t micro_time = hit_fast >> 8;
             uint64_t macro_time = hit_slow;
             
             if (acq_mode == FLIM)
@@ -389,17 +393,22 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
               // TODO
             }
 
-            uint64_t div_macro_time = macro_time >> 11;
+            uint64_t div_macro_time = macro_time >> macro_downsample;
             uint64_t new_macro_time_rollovers = div_macro_time / (1<<16);
             
-            if ((idx + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
-               buffer.resize(idx * 2);
-            
+            if (macro_time_rollovers == -1)
+               macro_time_rollovers = new_macro_time_rollovers;
+
+            if ((idx + 20 + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
+               buffer.resize(buffer.size() * 2);
+
             while (new_macro_time_rollovers > macro_time_rollovers)
             {
-               buffer[idx++] = {0x0, 0xF};
+               buffer[idx++] = { 0x0, 0xF };
                macro_time_rollovers++;
             }
+            
+
             
             evt.macro_time = div_macro_time & 0xFFFF;
 
@@ -412,12 +421,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             if (channel == 3)
             {
                // Is the marker the rising or falling edge?
-               bool rising = evt.micro_time & 0x10;
-               
-               // Get arrival time of edge
-               int hit_fast = evt.micro_time;
-               uint64_t micro_time = (hit_fast >> 8);
-               uint64_t macro_time = p->timestamp;
+               bool rising = hit_fast & 0x10;
                uint64_t time = micro_time + macro_time;
 
                if (rising)
@@ -439,7 +443,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                         marker = MARK_PIXEL;
                         n_pixel++;
                      }
-                     std::cout << "Unknown length\n";
+                     std::cout << "Unknown length (too short)\n";
                      }
                   else if (marker_length < 160e3)
                   {
@@ -460,7 +464,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   }
                   else
                   {
-                     std::cout << "Unknown length\n";
+                     std::cout << "Unknown length (too long)\n";
                   }
                  
                   last_mark_rise_time = -1;

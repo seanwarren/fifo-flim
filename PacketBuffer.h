@@ -25,8 +25,17 @@ public:
    void reset()
    {
       std::fill(buffer_state.begin(), buffer_state.end(), BufferEmpty);
+      std::fill(buffer_size.begin(), buffer_size.end(), 0);
+      for (auto& b : buffer)
+         b.resize(buffer_length);
+
       fill_idx = 0;
       process_idx = 0;
+   }
+
+   double fillFactor()
+   {
+      return ((fill_idx - process_idx + n_buffers) % n_buffers) / static_cast<double>(n_buffers);
    }
 
    std::vector<T>* getNextBufferToFill()

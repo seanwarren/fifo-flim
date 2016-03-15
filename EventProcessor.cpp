@@ -1,8 +1,10 @@
 #include "EventProcessor.h"
-
+#include <iostream>
 
 void EventProcessor::start()
 {
+   packet_buffer.reset();
+
    for (auto& consumer : consumers)
       consumer->eventStreamAboutToStart();
 
@@ -14,9 +16,12 @@ void EventProcessor::start()
 
 void EventProcessor::processorThread()
 {
+   int ridx = 0;
    size_t n_consumers = consumers.size();
    while (running)
    {
+      if ((ridx++) % 1000 == 0)
+         std::cout << "Fill factor: " << packet_buffer.fillFactor()  << "\n";
 
       packet_buffer.waitForNextBuffer();
       size_t n = packet_buffer.getProcessingBufferSize();

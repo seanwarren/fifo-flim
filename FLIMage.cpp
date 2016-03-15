@@ -31,6 +31,24 @@ FLIMage::FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro
    timer->start();
 }
 
+void FLIMage::eventStreamAboutToStart()
+{
+   active = true;
+
+   macro_time_offset = 0;
+   frame_duration = 0;
+   line_start_time = 0;
+   line_duration = 1;
+   frame_duration = 0;
+   cur_x = cur_y = -1;
+   frame_idx = -1;
+
+   std::fill(count_rate.begin(), count_rate.end(), 0);
+   std::fill(max_instant_count_rate.begin(), max_instant_count_rate.end(), 0);
+   std::fill(counts_this_frame.begin(), counts_this_frame.end(), 0);
+   std::fill(last_photon_time.begin(), last_photon_time.end(), 0);
+};
+
 
 void FLIMage::resize(int n_x_, int n_y_)
 {
@@ -174,7 +192,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
          cur_x = ((macro_time - line_start_time) * n_x) / line_duration;
       }
 
-      if (isValidPixel()) // is a photon
+      if (isValidPixel()) // is at valid coordinate
       {
 
          int tx = cur_x;
@@ -232,6 +250,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
 
 void FLIMage::refreshDisplay()
 {
+   if (active)
    {
       std::lock_guard<std::mutex> lk(decay_mutex);
 
@@ -239,6 +258,7 @@ void FLIMage::refreshDisplay()
 
       for (int i = 0; i < n_chan; i++)
          std::fill(next_decay[i].begin(), next_decay[i].end(), 0);
+
+      emit decayUpdated();
    }
-   emit decayUpdated();
 }
