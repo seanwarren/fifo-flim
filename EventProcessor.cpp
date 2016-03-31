@@ -20,8 +20,8 @@ void EventProcessor::processorThread()
    size_t n_consumers = consumers.size();
    while (running)
    {
-      if ((ridx++) % 1000 == 0)
-         std::cout << "Fill factor: " << packet_buffer.fillFactor()  << "\n";
+//      if ((ridx++) % 1000 == 0)
+//         std::cout << "Fill factor: " << packet_buffer.fillFactor()  << "\n";
 
       packet_buffer.waitForNextBuffer();
       size_t n = packet_buffer.getProcessingBufferSize();

@@ -47,6 +47,13 @@ void FLIMage::eventStreamAboutToStart()
    std::fill(max_instant_count_rate.begin(), max_instant_count_rate.end(), 0);
    std::fill(counts_this_frame.begin(), counts_this_frame.end(), 0);
    std::fill(last_photon_time.begin(), last_photon_time.end(), 0);
+
+   std::lock_guard<std::mutex> lk(cv_mutex);
+
+   intensity = cv::Mat(n_x, n_y, CV_16U, cvScalar(0));
+   sum_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
+   mean_arrival_time = cv::Mat(n_x, n_y, CV_32F, cvScalar(0));
+
 };
 
 
