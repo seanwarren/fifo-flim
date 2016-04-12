@@ -160,7 +160,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
             int measured_lines = cur_y + 1;
             line_duration = static_cast<double>(frame_duration) / measured_lines;
 
-            if ((measured_lines != n_y) || (measured_lines != n_x))
+            if (abs(measured_lines - n_y) > 5) // TODO: kludge
                resize(measured_lines, measured_lines);
 
             frame_duration = 0;
