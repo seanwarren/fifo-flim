@@ -20,7 +20,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   acq_mode = FLIM;
+   acq_mode = PLIM;
 
    processor = createEventProcessor<Cronologic>(this, 10000, 10000);
    
@@ -30,9 +30,23 @@ FifoTcspc(parent)
    checkCard();
    configureCard();
    
-   macro_time_resolution_ps = bin_size_ps * (1<<macro_downsample);
+   if (acq_mode == FLIM)
+   {
+      micro_downsample = 0;
+      n_bins = 25;
+   }
+   else // PLIM
+   {
+      micro_downsample = 10;
+      n_bins = 4096;
+   }
 
-   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, bin_size_ps, macro_time_resolution_ps, 5, 3);
+   int histogram_bits = ceil(log2(n_bins));
+
+   micro_time_resolution_ps = bin_size_ps * (1 << micro_downsample);
+   macro_time_resolution_ps = bin_size_ps * (1 << macro_downsample);
+
+   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, micro_time_resolution_ps, macro_time_resolution_ps, histogram_bits, n_chan);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
@@ -390,6 +404,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             }
             else if (acq_mode == PLIM)
             {
+               micro_time = micro_time >> 10; // unit resolution = 512ns
               // TODO
             }
 

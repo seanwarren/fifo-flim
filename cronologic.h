@@ -10,6 +10,8 @@ struct cl_event
 {
    uint16_t hit_fast;
    uint16_t hit_slow;
+      // 0:3  [4]  channel     (channel==0xF => event is marker)
+      // 4:15 [12] micro_time
 };
 
 class Cronologic : public FifoTcspc
@@ -28,10 +30,10 @@ public:
 
    const QString describe() { return board_name; }
    double getSyncRateHz() { return sync_rate_hz; }
-   double getMicroBaseResolutionPs() { return bin_size_ps; }
+   double getMicroBaseResolutionPs() { return micro_time_resolution_ps; }
    double getMacroBaseResolutionPs() { return macro_time_resolution_ps; }
-   int getNumChannels() { return 3; } // TODO
-   int getNumTimebins() { return (acq_mode == FLIM) ? 25 : 255; } // TODO
+   int getNumChannels() { return n_chan; }
+   int getNumTimebins() { return n_bins; }
 
    void setParameter(const QString& parameter, ParameterType type, QVariant value);
    QVariant getParameter(const QString& parameter, ParameterType type);
@@ -59,8 +61,12 @@ private:
 
    double bin_size_ps;
    double macro_time_resolution_ps;
-   
+   double micro_time_resolution_ps;
+   int n_bins;
+   const int n_chan = 3;
+
    const int macro_downsample = 7;
+   int micro_downsample = 0;
 
    uint64_t last_mark_rise_time = -1;
    int n_line = 0;
