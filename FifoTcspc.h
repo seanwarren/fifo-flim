@@ -62,8 +62,8 @@ public:
    virtual double getMacroBaseResolutionPs() = 0;
    virtual const QString describe() = 0;
 
-   cv::Mat GetImage();
-   cv::Mat GetImageUnsafe();
+   cv::Mat getImage();
+   cv::Mat getImageUnsafe();
 
    std::shared_ptr<FLIMage> getPreviewFLIMage() { return cur_flimage; };
 

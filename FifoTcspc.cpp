@@ -77,12 +77,12 @@ void FifoTcspc::stopScanning()
 	stopFIFO();
 }
 
-cv::Mat FifoTcspc::GetImage()
+cv::Mat FifoTcspc::getImage()
 {
 	return cur_flimage->getIntensity().clone();
 }
 
-cv::Mat FifoTcspc::GetImageUnsafe()
+cv::Mat FifoTcspc::getImageUnsafe()
 {
 	return cur_flimage->getIntensity();
 }

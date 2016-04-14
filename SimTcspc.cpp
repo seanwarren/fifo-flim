@@ -19,7 +19,7 @@ FifoTcspc(parent)
    cur_flimage = make_shared<FLIMage>(false, time_resolution_ps, 1e6, 8, 4);
 
    processor->addTcspcEventConsumer(cur_flimage);
-   StartThread();
+   startThread();
 }
 
 

@@ -36,7 +36,7 @@ FifoTcspc(parent)
 
    processor->addTcspcEventConsumer(cur_flimage);
 
-   StartThread();
+   startThread();
 
    int a = sizeof(TcspcEvent);
    a = 1;
