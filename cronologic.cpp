@@ -37,8 +37,8 @@ FifoTcspc(parent)
    }
    else // PLIM
    {
-      micro_downsample = 10;
-      n_bins = 4096;
+      micro_downsample = 11;
+      n_bins = 512;
    }
 
    int histogram_bits = ceil(log2(n_bins));
@@ -47,6 +47,9 @@ FifoTcspc(parent)
    macro_time_resolution_ps = bin_size_ps * (1 << macro_downsample);
 
    cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, micro_time_resolution_ps, macro_time_resolution_ps, histogram_bits, n_chan);
+
+   if (acq_mode == PLIM)
+      cur_flimage->setImageSize(128, 128);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
@@ -350,7 +353,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
       while (p <= read_data.last_packet)
       {
          // Measure sync rate
-         int update_count = 10000;
+         int update_count = (acq_mode == PLIM) ? 100 : 10000;
          if (packet_count % update_count == 0)
          {
             double period_ps = bin_size_ps * static_cast<double>(p->timestamp - last_update_time) / update_count;
@@ -377,56 +380,52 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          if (flags)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
-         uint64_t hit_slow = p->timestamp;
+         uint64_t macro_time = p->timestamp;
          //hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
 
          if (acq_mode == AcquisitionMode::PLIM)
          {
+            if ((idx + 1) >= buffer.size())
+               buffer.resize(buffer.size() * 2);
             // Insert pixel marker for PLIM
-            buffer[idx++] = { hit_slow & 0xFFFF, 0xF | (MARK_PIXEL << 4) };
+            buffer[idx++] = { macro_time & 0xFFFF, 0xF | (MARK_PIXEL << 4) };
+         }
+
+         uint64_t div_macro_time = macro_time >> macro_downsample;
+         uint64_t new_macro_time_rollovers = div_macro_time / (1 << 16);
+
+         if (macro_time_rollovers == -1)
+            macro_time_rollovers = new_macro_time_rollovers;
+
+         while ((idx + 20 + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
+            buffer.resize(buffer.size() * 2);
+
+         while (new_macro_time_rollovers > macro_time_rollovers)
+         {
+            buffer[idx++] = { 0x0, 0xF };
+            macro_time_rollovers++;
          }
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
          {            
             TcspcEvent evt;
-            uint64_t hit_fast = *(packet_data + i);
+            evt.macro_time = div_macro_time & 0xFFFF;
 
+            uint64_t hit_fast = *(packet_data + i);
             int channel = hit_fast & 0xF;
             
             uint64_t micro_time = hit_fast >> 8;
-            uint64_t macro_time = hit_slow;
+            uint64_t downsampled_micro_time;
             
             if (acq_mode == FLIM)
             {
                macro_time += 25 * (micro_time / 25);
                micro_time = micro_time % 25;
             }
-            else if (acq_mode == PLIM)
-            {
-               micro_time = micro_time >> 10; // unit resolution = 512ns
-              // TODO
-            }
 
-            uint64_t div_macro_time = macro_time >> macro_downsample;
-            uint64_t new_macro_time_rollovers = div_macro_time / (1<<16);
+            downsampled_micro_time = micro_time >> micro_downsample;
             
-            if (macro_time_rollovers == -1)
-               macro_time_rollovers = new_macro_time_rollovers;
-
-            if ((idx + 20 + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
-               buffer.resize(buffer.size() * 2);
-
-            while (new_macro_time_rollovers > macro_time_rollovers)
-            {
-               buffer[idx++] = { 0x0, 0xF };
-               macro_time_rollovers++;
-            }
-            
-
-            
-            evt.macro_time = div_macro_time & 0xFFFF;
-
             uint64_t marker = 0;
             int ignore = false;
 
@@ -450,7 +449,6 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                {
                   uint64_t marker_length_i = time - last_mark_rise_time;
                   double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
-
                   if (marker_length < 30e3)
                   {
                      if (line_active)
@@ -489,7 +487,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             if (marker)
                evt.micro_time = 0xF | (marker << 4);
             else
-               evt.micro_time = channel | (micro_time << 4);
+               evt.micro_time = channel | (downsampled_micro_time << 4);
 
             if (!ignore)
                 buffer[idx++] = evt;

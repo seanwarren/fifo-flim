@@ -46,6 +46,11 @@ public:
 
    void refreshDisplay();
 
+   void setImageSize(int n_x, int n_y)
+   {
+      resize(n_x, n_y);
+   }
+
 signals:
    void decayUpdated();
    void countRatesUpdated();
