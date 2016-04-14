@@ -6,6 +6,7 @@ option(USE_BECKER_HICKL FALSE)
 option(USE_CRONOLOGIC FALSE)
 
 find_package(Qt5Widgets REQUIRED)
+find_package(Qt5SerialPort REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 
 find_package(OpenMP)
@@ -58,12 +59,13 @@ set(HEADERS
    lz4hc.h
    LZ4Stream.h
    LZ4ThreadedStream.h
+   PLIMLaserModulator.h
    ${BH_HEADERS}
    ${CL_HEADERS}
 )
 
 set(COMMON_INCLUDE ${BH_INCLUDE} ${CL_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${InstrumentControl_INCLUDE_DIR})
-include_directories(${Qt5Widgets_INCLUDE_DIRS} ${COMMON_INCLUDE})
+include_directories(${Qt5Widgets_INCLUDE_DIRS} ${Qt5SerialPort_INCLUDE_DIRS} ${COMMON_INCLUDE})
 
 add_library(fifo_flim OBJECT ${SOURCE} ${HEADERS} ${UI_HEADERS} ${UI_RESOURCES})
 

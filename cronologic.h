@@ -4,6 +4,7 @@
 #include "ImageSource.h"
 #include "FLIMage.h"
 #include "FifoTcspc.h"
+#include "PLIMLaserModulator.h"
 
 
 struct cl_event 
@@ -79,6 +80,8 @@ private:
    
    double sync_rate_hz = 0;
    bool running = false;
+
+   PLIMLaserModulator* modulator = nullptr;
 
    FlimRates rates;
 

@@ -22,6 +22,11 @@ FifoTcspc(parent)
 {
    acq_mode = FLIM;
 
+   if (acq_mode == PLIM)
+   {
+      modulator = new PLIMLaserModulator(this);
+   }
+
    processor = createEventProcessor<Cronologic>(this, 10000, 10000);
    
    threshold = { -60.0, -60.0, -60.0 };
