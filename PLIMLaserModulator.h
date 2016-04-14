@@ -24,12 +24,12 @@ public:
    void setModulation(bool modulation_active_)
    {
       modulation_active = modulation_active_;
-      sendMessage(MSG_SET_MODULATION, (int) modulation_active);
+      sendMessage(MSG_SET_MODULATION, (uint) modulation_active);
    }
 
-   void setNumPixels(int n_pixels_)
+   void setNumPixels(uint n_pixels_)
    {
-      if (n_pixels_ <= 0)
+      if (n_pixels_ == 0)
          return;
 
       n_pixels = n_pixels_;
@@ -51,6 +51,6 @@ private:
    const QString getExpectedIdentifier() { return "PLIM Laser Modulator"; };
 
 
-   int n_pixels = 128;
+   uint n_pixels = 128;
    bool modulation_active = false;
 };

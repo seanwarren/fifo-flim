@@ -23,9 +23,7 @@ FifoTcspc(parent)
    acq_mode = PLIM;
 
    if (acq_mode == PLIM)
-   {
       modulator = new PLIMLaserModulator(this);
-   }
 
    processor = createEventProcessor<Cronologic>(this, 10000, 10000);
    
@@ -64,7 +62,7 @@ FifoTcspc(parent)
    a = 1;
 }
 
-enum ParameterClass { StartThreshold, Threshold, TimeShift, Unknown };
+enum ParameterClass { StartThreshold, Threshold, TimeShift, NumPixelsPLIM, Unknown };
 
 ParameterClass getParameterClass(const QString& parameter, int& channel)
 {
@@ -90,6 +88,10 @@ ParameterClass getParameterClass(const QString& parameter, int& channel)
    {
       return StartThreshold;
    }
+   else if (parameter == "Num_Pixel_PLIM")
+   {
+      return NumPixelsPLIM;
+   }
    
    return Unknown;
 }
@@ -108,7 +110,8 @@ void Cronologic::setParameter(const QString& parameter, ParameterType type, QVar
       threshold[channel] = value.toDouble();
    else if (c == StartThreshold)
       start_threshold = value.toDouble();
-
+   else if (c == NumPixelsPLIM && acq_mode == PLIM)
+      modulator->setNumPixels(value.toUInt());
 
 };
 
@@ -122,12 +125,14 @@ QVariant Cronologic::getParameter(const QString& parameter, ParameterType type)
       return start_threshold;
    else if (c == TimeShift)
       return time_shift[channel];
+   else if (c == NumPixelsPLIM && acq_mode == PLIM)
+      return modulator->getNumPixels();
 
    return 0;
 };
 
-QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType type, Limit limit) 
-{ 
+QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType type, Limit limit)
+{
    int channel;
    ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold || c == StartThreshold)
@@ -144,6 +149,12 @@ QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType t
       else
          return 25;
    }
+   else if (c == NumPixelsPLIM)
+   {
+      if (limit == Limit::Min)
+         return 1;
+   }
+
    return QVariant();
 };
 
@@ -172,6 +183,8 @@ bool Cronologic::isParameterWritable(const QString& parameter)
       return !running;
    else if (c == TimeShift)
       return true;
+   else if (c == NumPixelsPLIM)
+      return acq_mode == PLIM;
 
    return true;
 };
@@ -304,6 +317,10 @@ void Cronologic::startModule()
    last_mark_rise_time = 0;
    macro_time_rollovers = -1;
 
+   if (acq_mode == PLIM)
+      modulator->setModulation(true);
+
+
    CHECK(timetagger4_start_tiger(device));
    // start data capture
    CHECK(timetagger4_start_capture(device));
@@ -315,6 +332,9 @@ void Cronologic::stopModule()
    CHECK(timetagger4_stop_tiger(device));
    CHECK(timetagger4_stop_capture(device));
    running = false;
+
+   if (acq_mode == PLIM)
+      modulator->setModulation(false);
 }
 
 Cronologic::~Cronologic()
