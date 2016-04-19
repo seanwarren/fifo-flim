@@ -20,7 +20,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   acq_mode = PLIM;
+   acq_mode = FLIM;
 
    if (acq_mode == PLIM)
       modulator = new PLIMLaserModulator(this);
@@ -153,6 +153,8 @@ QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType t
    {
       if (limit == Limit::Min)
          return 1;
+      else
+         return 2048;
    }
 
    return QVariant();
@@ -422,8 +424,9 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          if (macro_time_rollovers == -1)
             macro_time_rollovers = new_macro_time_rollovers;
 
-         while ((idx + 20 + (new_macro_time_rollovers - macro_time_rollovers)) >= buffer.size())
-            buffer.resize(buffer.size() * 2);
+         size_t required_size = idx + hit_count + (new_macro_time_rollovers - macro_time_rollovers);
+         if (required_size >= buffer.size())
+            buffer.resize(required_size * 1.2);
 
          while (new_macro_time_rollovers > macro_time_rollovers)
          {
