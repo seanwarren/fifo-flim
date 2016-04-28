@@ -498,7 +498,6 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                      line_active = true;
                      n_line++;
                      n_pixel = 0;
-                     events++;
                   }
                   else if (marker_length < 200e3)
                   {
