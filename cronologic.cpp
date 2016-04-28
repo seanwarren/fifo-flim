@@ -3,6 +3,7 @@
 #include <QMessageBox>
 #include <QStandardPaths>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <chrono>
 #include <cassert>
 
@@ -20,7 +21,12 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   acq_mode = FLIM;
+   QString mode = QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
+
+   if (mode == "PLIM")
+      acq_mode = PLIM;
+   else
+      acq_mode = FLIM;
 
    if (acq_mode == PLIM)
       modulator = new PLIMLaserModulator(this);
