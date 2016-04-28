@@ -446,9 +446,10 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             uint64_t micro_time = hit_fast >> 8;
             uint64_t downsampled_micro_time;
             
+            uint64_t adj_macro_time = macro_time;
             if (acq_mode == FLIM)
             {
-               macro_time += 25 * (micro_time / 25);
+               adj_macro_time += 25 * (micro_time / 25);
                micro_time = micro_time % 25;
             }
 
@@ -464,7 +465,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             {
                // Is the marker the rising or falling edge?
                bool rising = hit_fast & 0x10;
-               uint64_t time = micro_time + macro_time;
+               uint64_t time = micro_time + adj_macro_time;
 
                if (rising)
                {
