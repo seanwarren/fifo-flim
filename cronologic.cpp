@@ -21,7 +21,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   QString mode = QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
+   QString mode = "FLIM"; //QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
 
    if (mode == "PLIM")
       acq_mode = PLIM;
@@ -386,7 +386,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
       while (p <= read_data.last_packet)
       {
          // Measure sync rate
-         int update_count = (acq_mode == PLIM) ? 100 : 10000;
+         int update_count = (acq_mode == PLIM) ? 1000 : 10000;
          if (packet_count % update_count == 0)
          {
             double period_ps = bin_size_ps * static_cast<double>(p->timestamp - last_update_time) / update_count;
@@ -394,7 +394,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             last_update_time = p->timestamp;
 
             rates.sync = sync_rate_hz;
-            emit ratesUpdated(rates);
+            //emit ratesUpdated(rates);
          }
          packet_count++;
 
@@ -409,12 +409,10 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
          if (flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
             std::cout << "Slow sync\n";
-
-         if (flags)
+         else if (flags)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
          uint64_t macro_time = p->timestamp;
-         //hit_slow = (hit_slow & 0xFFFFFFFFFFFFFFF) << 4;
 
          if (acq_mode == AcquisitionMode::PLIM)
          {
@@ -486,29 +484,26 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
                   if (marker_length < 30e3)
                   {
-                     if (line_active)
-                     {
-                        marker = MARK_PIXEL;
-                        n_pixel++;
-                     }
-                     std::cout << "Unknown length (too short)\n";
-                     }
-                  else if (marker_length < 160e3)
-                  {
-                     marker = MARK_FRAME; // 154
-                     n_line = 0;
-                  }
-                  else if (marker_length < 180e3)
-                  {
-                     marker = MARK_LINE_END; // 166
+                     if (!line_active)
+                        std::cout << "Unexpected line end\n";
+                     marker = MARK_LINE_END; // 23e3
                      line_active = false;
                   }
-                  else if (marker_length < 210e3)
+                  else if (marker_length < 100e3)
                   {
-                     marker = MARK_LINE_START; // 190
+                     if (line_active)
+                        std::cout << "Unexpected line end\n";
+
+                     marker = MARK_LINE_START; // 71
                      line_active = true;
                      n_line++;
                      n_pixel = 0;
+                     events++;
+                  }
+                  else if (marker_length < 200e3)
+                  {
+                     marker = MARK_FRAME; // 154e3
+                     n_line = 0;
                   }
                   else
                   {
