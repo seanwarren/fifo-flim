@@ -66,7 +66,7 @@ private:
    int n_bins;
    const int n_chan = 3;
 
-   const int macro_downsample = 7;
+   const int macro_downsample = 6;
    int micro_downsample = 0;
 
    uint64_t last_mark_rise_time = -1;

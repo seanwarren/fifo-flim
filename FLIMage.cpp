@@ -101,7 +101,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
 {
    if (p.isMacroTimeRollover()) // rollover
    {
-      macro_time_offset += 0xFFFF;
+      macro_time_offset += ((uint64_t)0xFFFF) * p.macro_time;
       return;
    }
 
@@ -196,7 +196,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
    {
       if (!using_pixel_markers && (n_x > 1))
       {
-         cur_x = ((macro_time - line_start_time) * n_x) / line_duration;
+         cur_x = (macro_time - line_start_time) * (n_x / line_duration);
       }
 
       if (isValidPixel()) // is at valid coordinate

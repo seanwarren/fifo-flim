@@ -428,15 +428,16 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          if (macro_time_rollovers == -1)
             macro_time_rollovers = new_macro_time_rollovers;
 
-         size_t required_size = idx + hit_count + (new_macro_time_rollovers - macro_time_rollovers);
+         assert(new_macro_time_rollovers - macro_time_rollovers < 0xFFFF);
+         uint16_t rollovers = new_macro_time_rollovers - macro_time_rollovers;
+
+         size_t required_size = idx + hit_count + 1;
          if (required_size >= buffer.size())
             buffer.resize(required_size * 1.2);
 
-         while (new_macro_time_rollovers > macro_time_rollovers)
-         {
-            buffer[idx++] = { 0x0, 0xF };
-            macro_time_rollovers++;
-         }
+         if (rollovers > 0)
+            buffer[idx++] = { rollovers, 0xF };
+         macro_time_rollovers = new_macro_time_rollovers;
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)

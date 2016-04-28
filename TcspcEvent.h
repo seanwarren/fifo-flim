@@ -28,7 +28,7 @@ public:
 
    bool isMacroTimeRollover() const 
    { 
-      return (micro_time == 0xF) && (macro_time == 0); 
+      return (micro_time == 0xF); 
    };
 
    bool isMark() const
