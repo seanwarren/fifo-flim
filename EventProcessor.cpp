@@ -1,5 +1,6 @@
 #include "EventProcessor.h"
 #include <iostream>
+#include <windows.h>
 
 void EventProcessor::start()
 {
@@ -11,6 +12,10 @@ void EventProcessor::start()
    running = true;
    reader_thread = std::thread(&EventProcessor::readerThread, this);
    processor_thread = std::thread(&EventProcessor::processorThread, this);
+
+   SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+   SetThreadPriority(reader_thread.native_handle(), THREAD_PRIORITY_HIGHEST);
+   SetThreadPriority(processor_thread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
 }
 
 
@@ -35,6 +40,7 @@ void EventProcessor::processorThread()
          image_increment = 0;
          const auto& consumer = consumers[c];
          if (consumer->isProcessingEvents())
+         {
             for (int i = 0; i < n; i++)
             {
                TcspcEvent evt = buffer[i];
@@ -57,6 +63,7 @@ void EventProcessor::processorThread()
                }
                consumer->addEvent(evt);
             }
+         }
       }
 
       frame_idx += frame_increment;
