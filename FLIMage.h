@@ -67,6 +67,7 @@ protected:
    int frame_idx = -1;
    int frame_accumulation = 1;
    int num_end = -1;
+   uint64_t events = 0;
 
    uint64_t macro_time_offset = 0;
    uint64_t line_start_time = 0;

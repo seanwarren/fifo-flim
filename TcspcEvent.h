@@ -28,12 +28,12 @@ public:
 
    bool isMacroTimeRollover() const 
    { 
-      return (channel() == 0xF) && (macro_time == 0); 
+      return (micro_time == 0xF) && (macro_time == 0); 
    };
 
    bool isMark() const
    { 
-      return (channel() == 0xF) && (macro_time != 0); 
+      return (channel() == 0xF); 
    };
 
    uint8_t mark() const
