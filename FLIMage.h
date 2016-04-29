@@ -7,6 +7,8 @@
 #include <iostream>
 #include <fstream>
 #include <mutex>
+#include <queue>
+
 #include "TcspcEvent.h"
 
 class FLIMage : public QObject, public TcspcEventConsumer
@@ -95,10 +97,12 @@ protected:
    std::vector<double> max_instant_count_rate;
 
    std::vector<uint64_t> counts_this_frame;
-   std::vector<double> last_photon_time;
-   std::vector<uint64_t> min_arrival_time_diff;
+   std::vector<double> max_rate_this_frame;
+//   std::vector<uint64_t> min_arrival_time_diff;
    uint64_t last_frame_marker_time;
     
+   std::vector<std::queue<double>> recent_photon_times;
+
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;

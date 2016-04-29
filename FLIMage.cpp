@@ -19,8 +19,8 @@ FLIMage::FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro
    count_rate.resize(n_chan);
    counts_this_frame.resize(n_chan);
    max_instant_count_rate.resize(n_chan);
-   min_arrival_time_diff.resize(n_chan);
-   last_photon_time.resize(n_chan);
+   max_rate_this_frame.resize(n_chan);
+   recent_photon_times.resize(n_chan);
 
    resize(n_x, n_y);
 
@@ -46,7 +46,7 @@ void FLIMage::eventStreamAboutToStart()
    std::fill(count_rate.begin(), count_rate.end(), 0);
    std::fill(max_instant_count_rate.begin(), max_instant_count_rate.end(), 0);
    std::fill(counts_this_frame.begin(), counts_this_frame.end(), 0);
-   std::fill(last_photon_time.begin(), last_photon_time.end(), 0);
+   std::fill(max_instant_count_rate.begin(), max_instant_count_rate.end(), 0);
 
    std::lock_guard<std::mutex> lk(cv_mutex);
 
@@ -117,12 +117,14 @@ void FLIMage::addEvent(const TcspcEvent& p)
          {
             cur_x++;
 
+            /*
             if (isValidPixel() && (frame_idx % frame_accumulation == 0))
             {
                intensity.at<quint16>(cur_x, cur_y) = 0;
                sum_time.at<float>(cur_x, cur_y) = 0;
                mean_arrival_time.at<float>(cur_x, cur_y) = 0;
             }
+            */
          }
 
          if (mark & TcspcEvent::LineStartMarker)
@@ -130,7 +132,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
             line_start_time = macro_time;
             line_active = true;
 
-            cur_x = -1;
+            cur_x = 0; // bit of a bodge - first pixel clock arrives too soon on current PLIM setup. should be -1
             cur_y++;
          }
 
@@ -155,12 +157,12 @@ void FLIMage::addEvent(const TcspcEvent& p)
                cur_histogram[i] = 0;
          }
 
-         if ((using_pixel_markers == false) && (frame_idx > 0))
+         if (frame_idx > 0)
          {
             int measured_lines = cur_y + 1;
             line_duration = static_cast<double>(frame_duration) / measured_lines;
 
-            if (measured_lines != n_y)
+            if (measured_lines != n_y && !using_pixel_markers)
                resize(measured_lines, measured_lines);
 
             frame_duration = 0;
@@ -175,12 +177,16 @@ void FLIMage::addEvent(const TcspcEvent& p)
                count_rate[i] = counts_this_frame[i] / total_frame_time;
                counts_this_frame[i] = 0;
 
+               max_instant_count_rate[i] = max_rate_this_frame[i];
+               max_rate_this_frame[i] = 0;
+
+               /*
                if (min_arrival_time_diff[i] > 0)
                   max_instant_count_rate[i] = 1e12 / min_arrival_time_diff[i];
                else
                   max_instant_count_rate[i] = 0;
                min_arrival_time_diff[i] = std::numeric_limits<uint64_t>::max();
-
+               */
             }
             last_frame_marker_time = macro_time;
             emit countRatesUpdated();
@@ -229,6 +235,23 @@ void FLIMage::addEvent(const TcspcEvent& p)
                next_decay[channel][micro_time]++;
 
             counts_this_frame[channel]++;
+
+            double cur_time = macro_time * macro_resolution_ps + p.micro_time * time_resolution_ps;
+            recent_photon_times[channel].push(cur_time);
+
+            // Calculate rate based on arrival times of most recent photons
+            if (recent_photon_times[channel].size() > 100)
+            {
+               double last_time = recent_photon_times[channel].front();
+               
+               size_t n_photons = recent_photon_times[channel].size();
+               double rate = 1e12 * n_photons / (cur_time - last_time);
+
+               if (rate > max_rate_this_frame[channel])
+                  max_rate_this_frame[channel] = rate;
+
+               recent_photon_times[channel].pop();
+            }
 
             /*
             double cur_time = macro_time * macro_resolution_ps + p.micro_time * time_resolution_ps;
