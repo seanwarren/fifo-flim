@@ -21,7 +21,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   QString mode = "FLIM"; //QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
+   QString mode = "PLIM"; //QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
 
    if (mode == "PLIM")
       acq_mode = PLIM;
@@ -56,9 +56,6 @@ FifoTcspc(parent)
    macro_time_resolution_ps = bin_size_ps * (1 << macro_downsample);
 
    cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, micro_time_resolution_ps, macro_time_resolution_ps, histogram_bits, n_chan);
-
-   if (acq_mode == PLIM)
-      cur_flimage->setImageSize(128, 128);
 
    processor->addTcspcEventConsumer(cur_flimage);
 
@@ -326,7 +323,11 @@ void Cronologic::startModule()
    macro_time_rollovers = -1;
 
    if (acq_mode == PLIM)
+   {
+      int n_px = modulator->getNumPixels();
+      cur_flimage->setImageSize(n_px, n_px);
       modulator->setModulation(true);
+   }
 
 
    CHECK(timetagger4_start_tiger(device));
@@ -408,7 +409,8 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
 
          if (flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
-            std::cout << "Slow sync\n";
+         {
+         }  //std::cout << "Slow sync\n";
          else if (flags)
             std::cout << "Flag: " << (int) p->flags << "\n";
         
@@ -485,16 +487,11 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
                   if (marker_length < 30e3)
                   {
-                     if (!line_active)
-                        std::cout << "Unexpected line end\n";
                      marker = MARK_LINE_END; // 23e3
                      line_active = false;
                   }
                   else if (marker_length < 100e3)
                   {
-                     if (line_active)
-                        std::cout << "Unexpected line end\n";
-
                      marker = MARK_LINE_START; // 71
                      line_active = true;
                      n_line++;
