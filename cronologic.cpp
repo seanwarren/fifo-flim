@@ -6,6 +6,7 @@
 #include <QInputDialog>
 #include <chrono>
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 
@@ -388,12 +389,15 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
       {
          // Measure sync rate
          int update_count = (acq_mode == PLIM) ? 1000 : 10000;
-         if (packet_count % update_count == 0)
+         if (packet_count % (update_count+1) == 0)
          {
-            double period_ps = bin_size_ps * static_cast<double>(p->timestamp - last_update_time) / update_count;
-            sync_rate_hz = 1e12 / period_ps;
-            last_update_time = p->timestamp;
+            if (last_update_time > 0)
+            {
+               sync_period_bins = static_cast<double>(p->timestamp - last_update_time) / (update_count * sync_divider);
+               sync_rate_hz = 1e12 / (bin_size_ps * sync_period_bins);
+            }
 
+            last_update_time = p->timestamp;
             rates.sync = sync_rate_hz;
             //emit ratesUpdated(rates);
          }
@@ -430,37 +434,46 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          if (macro_time_rollovers == -1)
             macro_time_rollovers = new_macro_time_rollovers;
 
-         assert(new_macro_time_rollovers - macro_time_rollovers < 0xFFFF);
-         uint16_t rollovers = new_macro_time_rollovers - macro_time_rollovers;
+//         assert(new_macro_time_rollovers - macro_time_rollovers < 0xFFFF);
+         uint64_t rollovers = new_macro_time_rollovers - macro_time_rollovers;
+         uint64_t rollover_events = ceil(((double)rollovers) / (1 << 16));
 
-         size_t required_size = idx + hit_count + 1;
+         size_t required_size = idx + hit_count + rollover_events;
          if (required_size >= buffer.size())
             buffer.resize(required_size * 1.2);
-
-         if (rollovers > 0)
-            buffer[idx++] = { rollovers, 0xF };
+         
+         for (int i = 0; i < rollover_events; i++)
+         {
+            uint16_t rollovers_i = std::min(rollovers, 0xFFFFULL);
+            buffer[idx++] = { rollovers_i, 0xF };
+            rollovers -= rollovers_i;
+         }
          macro_time_rollovers = new_macro_time_rollovers;
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
          {            
             TcspcEvent evt;
-            evt.macro_time = div_macro_time & 0xFFFF;
 
             uint64_t hit_fast = *(packet_data + i);
             int channel = hit_fast & 0xF;
             
             uint64_t micro_time = hit_fast >> 8;
-            uint64_t downsampled_micro_time;
-            
             uint64_t adj_macro_time = macro_time;
+
             if (acq_mode == FLIM)
             {
-               adj_macro_time += 25 * (micro_time / 25);
-               micro_time = micro_time % 25;
+               // Correct for sync division
+               double intpart;
+               double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins;
+               micro_time = std::floor(micro_time_f);
+               adj_macro_time += std::floor(intpart * sync_period_bins);
+               //adj_macro_time += 25 * (micro_time / 25);
+               //micro_time = micro_time % 25;
+
             }
 
-            downsampled_micro_time = micro_time >> micro_downsample;
+            uint16_t downsampled_micro_time = micro_time >> micro_downsample;
             
             uint64_t marker = 0;
             int ignore = false;
@@ -506,7 +519,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   {
                      std::cout << "Unknown length (too long)\n";
                   }
-                 
+                  adj_macro_time -= marker_length_i;
                   last_mark_rise_time = -1;
                }
             }
@@ -515,6 +528,9 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                evt.micro_time = 0xF | (marker << 4);
             else
                evt.micro_time = channel | (downsampled_micro_time << 4);
+
+            evt.macro_time = (adj_macro_time >> macro_downsample) & 0xFFFF;
+
 
             if (!ignore)
                 buffer[idx++] = evt;
