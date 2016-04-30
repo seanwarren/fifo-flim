@@ -55,12 +55,20 @@ public:
    int getFrameAccumulation() { return frame_accumulation; }
    int getNumImages() { return n_images; };
 
+   bool readyForAcquisition() { return !live && !acq_in_progress; };
+   bool isLive() { return live; };
+   bool acquisitionInProgress() { return acq_in_progress; }
+
+   FlimRates getRates() { return rates; };
+
    virtual int getNumChannels() = 0;
    virtual int getNumTimebins() = 0;
    virtual double getSyncRateHz() = 0;
    virtual double getMicroBaseResolutionPs() = 0;
    virtual double getMacroBaseResolutionPs() = 0;
    virtual const QString describe() = 0;
+   virtual bool usingPixelMarkers() = 0;
+
 
    cv::Mat getImage();
    cv::Mat getImageUnsafe();
@@ -103,6 +111,8 @@ protected:
 
    uint64_t packets_read = 0;
    uint64_t packets_processed = 0;
+
+   FlimRates rates;
 
    std::shared_ptr<EventProcessor> processor;
 };

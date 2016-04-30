@@ -23,11 +23,12 @@ public:
    void init();
    size_t readPackets(std::vector<TcspcEvent>& buffer); // return whether any packets were read
 
-   virtual double getSyncRateHz() { return 1e12/T; };
-   virtual double getMicroBaseResolutionPs() { return time_resolution_ps; }
-   virtual double getMacroBaseResolutionPs() { return T; }
-   virtual int getNumChannels() { return n_chan; }
-   virtual int getNumTimebins() { return 1 << n_bits; };
+   double getSyncRateHz() { return 1e12/T; };
+   double getMicroBaseResolutionPs() { return time_resolution_ps; }
+   double getMacroBaseResolutionPs() { return T; }
+   int getNumChannels() { return n_chan; }
+   int getNumTimebins() { return 1 << n_bits; };
+   bool usingPixelMarkers() { return false; }
 
    const QString describe() { return "Simulated TCSPC module"; }
 

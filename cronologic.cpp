@@ -399,7 +399,6 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
             last_update_time = p->timestamp;
             rates.sync = sync_rate_hz;
-            //emit ratesUpdated(rates);
          }
          packet_count++;
 
@@ -444,7 +443,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          
          for (int i = 0; i < rollover_events; i++)
          {
-            uint16_t rollovers_i = std::min(rollovers, 0xFFFFULL);
+            uint16_t rollovers_i = (uint16_t) std::min(rollovers, 0xFFFFULL);
             buffer[idx++] = { rollovers_i, 0xF };
             rollovers -= rollovers_i;
          }

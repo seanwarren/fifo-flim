@@ -35,6 +35,7 @@ public:
    double getMacroBaseResolutionPs() { return macro_time_resolution_ps; }
    int getNumChannels() { return n_chan; }
    int getNumTimebins() { return n_bins; }
+   bool usingPixelMarkers() { return acq_mode == PLIM; };
 
    void setParameter(const QString& parameter, ParameterType type, QVariant value);
    QVariant getParameter(const QString& parameter, ParameterType type);
@@ -90,8 +91,6 @@ private:
    bool running = false;
 
    PLIMLaserModulator* modulator = nullptr;
-
-   FlimRates rates;
 
    AcquisitionMode acq_mode;
 

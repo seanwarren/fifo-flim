@@ -8,6 +8,7 @@
 #include "LZ4ThreadedStream.h"
 #include "TcspcEvent.h"
 #include "FifoTcspc.h"
+#include <map>
 
 enum FlimMetadataTag
 {
@@ -42,6 +43,10 @@ public:
 
    void addEvent(const TcspcEvent& evt);
 
+   void addMetadata(const QString& tag, const QVariant& value) { metadata[tag] = value; };
+   void removeMetadata(const QString& tag) { metadata.erase(tag); }
+   void clearMetadata() { metadata.clear(); }
+
    bool isProcessingEvents() { return recording; }
 
 protected:
@@ -54,11 +59,15 @@ protected:
    QDataStream header_stream;
    LZ4Stream lz4_stream;
 
+   std::map<QString, QVariant> metadata;
+
    bool recording = false;
    bool running = false;
 
    void writeFileHeader();
    void openFile();
+
+   void writeTag(const QString& tag, const QVariant& value);
 
    void writeTag(const char* tag, double value);
    void writeTag(const char* tag, int64_t value);

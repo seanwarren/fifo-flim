@@ -73,7 +73,11 @@ void FlimFileWriter::writeFileHeader()
    writeTag("MacrotimeResolutionUnit_ps", tcspc->getMacroBaseResolutionPs());
    writeTag("L4ZCompression", use_compression);
    writeTag("L4ZMessageSize", lz4_stream.getMessageSize());
-   writeTag("UsingPixelMarkers", false); // TODO
+   writeTag("UsingPixelMarkers", tcspc->usingPixelMarkers());
+
+   for(auto&& m : metadata)
+      writeTag(m.first, m.second);
+   
    writeEndTag();
 
    buffer.close();
@@ -133,7 +137,25 @@ void FlimFileWriter::stopRecording()
    file.close();
 }
 
+void FlimFileWriter::writeTag(const QString& tag_string, const QVariant& value)
+{
+   const char* tag = tag_string.toLatin1();
 
+   QVariant::Type type = value.type();
+
+   if (type == QVariant::Type::Double)
+      writeTag(tag, value.toDouble());
+   else if (type == QVariant::Type::Int)
+      writeTag(tag, value.toLongLong());
+   else if (type == QVariant::Type::UInt)
+      writeTag(tag, value.toULongLong());
+   else if (type == QVariant::Type::Bool)
+      writeTag(tag, value.toBool());
+   else if (type == QVariant::Type::String)
+      writeTag(tag, value.toString());
+   else if (type == QVariant::Type::DateTime || type == QVariant::Type::Time)
+      writeTag(tag, value.toDateTime());
+}
 
 void FlimFileWriter::writeTag(const char* tag, double value)
 {
