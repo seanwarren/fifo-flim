@@ -88,6 +88,7 @@ private:
    int sync_divider = 16;
    double sync_rate_hz = 0;
    double sync_period_bins = 0;
+   int sync_period_bins_ceil = 0;
    bool running = false;
 
    PLIMLaserModulator* modulator = nullptr;

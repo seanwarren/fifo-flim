@@ -394,6 +394,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             if (last_update_time > 0)
             {
                sync_period_bins = static_cast<double>(p->timestamp - last_update_time) / (update_count * sync_divider);
+               sync_period_bins_ceil = ceil(sync_period_bins);
                sync_rate_hz = 1e12 / (bin_size_ps * sync_period_bins);
             }
 
@@ -464,12 +465,9 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             {
                // Correct for sync division
                double intpart;
-               double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins;
-               micro_time = std::floor(micro_time_f);
-               adj_macro_time += std::floor(intpart * sync_period_bins);
-               //adj_macro_time += 25 * (micro_time / 25);
-               //micro_time = micro_time % 25;
-
+               double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins + time_shift[channel];
+               micro_time = ((uint64_t) std::round(micro_time_f)) % sync_period_bins_ceil;
+               adj_macro_time += std::round(intpart * sync_period_bins);
             }
 
             uint16_t downsampled_micro_time = micro_time >> micro_downsample;
