@@ -39,6 +39,7 @@ public:
    std::vector<uint>& getCurrentDecay(int channel) { return decay[channel]; }
    std::vector<double>& getCountRates() { return count_rate; };
    std::vector<double>& getMaxInstantCountRates() { return max_instant_count_rate; };
+   double getMaxCountInPixel() { return max_pixel_counts; }
 
    void addEvent(const TcspcEvent& evt);
    void nextImageStarted() {};
@@ -95,10 +96,10 @@ protected:
 
    std::vector<double> count_rate;
    std::vector<double> max_instant_count_rate;
+   uint64_t max_pixel_counts = 0;
 
    std::vector<uint64_t> counts_this_frame;
    std::vector<double> max_rate_this_frame;
-//   std::vector<uint64_t> min_arrival_time_diff;
    uint64_t last_frame_marker_time;
     
    std::vector<std::queue<double>> recent_photon_times;
