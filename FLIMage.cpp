@@ -132,7 +132,10 @@ void FLIMage::addEvent(const TcspcEvent& p)
             line_start_time = macro_time;
             line_active = true;
 
+
             cur_x = 0; // bit of a bodge - first pixel clock arrives too soon on current PLIM setup. should be -1
+
+            cur_dir *= -1;
             cur_y++;
          }
 
@@ -185,6 +188,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
          frame_idx++;
          cur_x = -1;
          cur_y = -1;
+         cur_dir = 1;
          num_end = 0;
          frame_duration = 0;
       }
@@ -194,6 +198,8 @@ void FLIMage::addEvent(const TcspcEvent& p)
       if (!using_pixel_markers && (n_x > 1))
       {
          cur_x = (macro_time - line_start_time) * (n_x / line_duration);
+         if (cur_dir == -1)
+            cur_x = n_x - 1 - cur_x;
       }
 
       if (isValidPixel()) // is at valid coordinate

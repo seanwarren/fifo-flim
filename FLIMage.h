@@ -54,6 +54,8 @@ public:
       resize(n_x, n_y);
    }
 
+   void setBidirectional(bool bi_directional_) { bi_directional = bi_directional_; }
+
 signals:
    void decayUpdated();
    void countRatesUpdated();
@@ -107,6 +109,9 @@ protected:
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;
+   bool bi_directional = true;
+
+   int cur_dir = +1;
 
    std::mutex cv_mutex;
    std::mutex decay_mutex;
