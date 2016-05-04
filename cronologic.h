@@ -67,7 +67,7 @@ private:
    int n_bins;
    const int n_chan = 3;
 
-   const int macro_downsample = 4;
+   const int macro_downsample = 6;
    int micro_downsample = 0;
 
    uint64_t last_mark_rise_time = -1;
@@ -86,8 +86,8 @@ private:
    std::vector<int> time_shift;
    
    int sync_divider = 16;
-   double sync_rate_hz = 0;
-   double sync_period_bins = 0;
+   double sync_rate_hz = 80.2e6;//TODO
+   double sync_period_bins = 25;//TODO
    bool running = false;
 
    PLIMLaserModulator* modulator = nullptr;

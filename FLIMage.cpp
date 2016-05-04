@@ -164,8 +164,6 @@ void FLIMage::addEvent(const TcspcEvent& p)
 
             if (measured_lines != n_y && !using_pixel_markers)
                resize(measured_lines, measured_lines);
-
-            frame_duration = 0;
          }
 
          // Calculate photon rates
@@ -187,7 +185,8 @@ void FLIMage::addEvent(const TcspcEvent& p)
          frame_idx++;
          cur_x = -1;
          cur_y = -1;
-         num_end = -1;
+         num_end = 0;
+         frame_duration = 0;
       }
    }
    else // is photon
@@ -268,11 +267,11 @@ void FLIMage::refreshDisplay()
 
       for (int i = 0; i < n_chan; i++)
          std::fill(next_decay[i].begin(), next_decay[i].end(), 0);
-
+      /*
       double max_dbl;
       cv::minMaxLoc(intensity, nullptr, &max_dbl);
       max_pixel_counts = (uint64_t) max_dbl;
-
+      */
       emit decayUpdated();
    }
 }

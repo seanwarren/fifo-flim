@@ -22,7 +22,7 @@ void CHECK(int err)
 Cronologic::Cronologic(QObject* parent) :
 FifoTcspc(parent)
 {
-   QString mode = "PLIM"; //QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
+   QString mode = "FLIM"; //QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
 
    if (mode == "PLIM")
       acq_mode = PLIM;
@@ -465,7 +465,9 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             {
                // Correct for sync division
                double intpart;
-               double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins + time_shift[channel];
+               double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins;
+               if (channel < 3)
+                  micro_time_f += time_shift[channel];
                micro_time = ((uint64_t) std::round(micro_time_f)) % n_bins;
                adj_macro_time += std::round(intpart * sync_period_bins);
             }
@@ -482,7 +484,8 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             {
                // Is the marker the rising or falling edge?
                bool rising = hit_fast & 0x10;
-               uint64_t time = micro_time + adj_macro_time;
+               uint64_t time = (hit_fast>>8) + macro_time;
+               //uint64_t t = micro_time + adj_macro_time;
 
                if (rising)
                {
@@ -516,7 +519,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   {
                      std::cout << "Unknown length (too long)\n";
                   }
-                  adj_macro_time -= marker_length_i;
+                  //adj_macro_time -= marker_length_i;
                   last_mark_rise_time = -1;
                }
             }
