@@ -44,7 +44,7 @@ public:
 
    void setLive(bool live);
 
-   Q_INVOKABLE void startAcquisition();
+   Q_INVOKABLE void startAcquisition(bool indeterminate = false);
    Q_INVOKABLE void cancelAcquisition();
 
    void addTcspcEventConsumer(std::shared_ptr<TcspcEventConsumer> consumer) { processor->addTcspcEventConsumer(consumer); }

@@ -27,14 +27,22 @@ void FifoTcspc::setLive(bool live_)
    live = live_;
 }
 
-void FifoTcspc::startAcquisition()
+void FifoTcspc::startAcquisition(bool indeterminate)
 {
    assert(!live);
 
    processor->setFrameIncrementCallback(std::bind(&FifoTcspc::frameIncremented, this));
-   processor->setFramesPerImage(frame_accumulation);
-   processor->setNumImages(n_images);
-   processor->reset();
+
+   if (indeterminate)
+   {
+      processor->runContinuously();
+   }
+   else
+   {
+      processor->setFramesPerImage(frame_accumulation);
+      processor->setNumImages(n_images);
+      processor->reset();
+   }
 
    acq_in_progress = true;
    acq_idx = 0;
