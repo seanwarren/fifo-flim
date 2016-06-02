@@ -109,7 +109,7 @@ protected:
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;
-   bool bi_directional = true;
+   bool bi_directional = false;
 
    int cur_dir = +1;
 
