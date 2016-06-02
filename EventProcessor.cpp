@@ -13,9 +13,9 @@ void EventProcessor::start()
    reader_thread = std::thread(&EventProcessor::readerThread, this);
    processor_thread = std::thread(&EventProcessor::processorThread, this);
 
-   SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-   SetThreadPriority(reader_thread.native_handle(), THREAD_PRIORITY_HIGHEST);
-   SetThreadPriority(processor_thread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+   //SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+   //SetThreadPriority(reader_thread.native_handle(), THREAD_PRIORITY_HIGHEST);
+   //SetThreadPriority(processor_thread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
 }
 
 
