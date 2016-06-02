@@ -396,9 +396,15 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                sync_period_bins = static_cast<double>(p->timestamp - last_update_time) / (update_count * sync_divider);
                
                if (acq_mode == FLIM)
+               {
                   n_bins = ceil(sync_period_bins);
+                  sync_rate_hz = 1e12 / (bin_size_ps * sync_period_bins);
+               }
+               else
+               {
+                  sync_rate_hz = 1.0; // TODO: workaround
+               }
    
-               sync_rate_hz = 1e12 / (bin_size_ps * sync_period_bins);
             }
 
             last_update_time = p->timestamp;
