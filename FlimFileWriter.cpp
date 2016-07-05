@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 #include <QFileDialog>
 #include <QBuffer>
+#include <QMessageBox>
 
 void FlimFileWriter::eventStreamAboutToStart()
 {
@@ -119,7 +120,11 @@ void FlimFileWriter::openFile()
    std::string fn = file_name_with_number.toStdString();
    
    file.setFileName(file_name_with_number);
-   file.open(QIODevice::WriteOnly);
+   bool success = file.open(QIODevice::WriteOnly);
+
+   if (!success)
+      emit error("Could not open file!");
+
    data_stream.setDevice(&file);
    data_stream.setByteOrder(QDataStream::LittleEndian);
    lz4_stream.setDevice(&file);

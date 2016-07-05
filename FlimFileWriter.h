@@ -49,6 +49,10 @@ public:
 
    bool isProcessingEvents() { return recording; }
 
+signals:
+
+   void error(QString);
+
 protected:
 
    QString folder;

@@ -49,7 +49,14 @@ public:
 
    void addTcspcEventConsumer(std::shared_ptr<TcspcEventConsumer> consumer) { processor->addTcspcEventConsumer(consumer); }
 
-   void setFrameAccumulation(int frame_accumulation_) { frame_accumulation = frame_accumulation_; }
+   void setFrameAccumulation(int frame_accumulation_) 
+   { 
+      if (frame_accumulation_ != frame_accumulation)
+         emit frameAccumulationChanged(frame_accumulation_);
+
+      frame_accumulation = frame_accumulation_; 
+   }
+
    void setNumImages(int n_images_) { n_images = n_images_; };
 
    int getFrameAccumulation() { return frame_accumulation; }
@@ -79,6 +86,7 @@ public:
 
 signals:
 
+   void frameAccumulationChanged(int frame_accumulation);
    void recordingStatusChanged(bool recording);
    void ratesUpdated(FlimRates rates);
    void fifoUsageUpdated(float usage);

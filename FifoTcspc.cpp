@@ -41,8 +41,9 @@ void FifoTcspc::startAcquisition(bool indeterminate)
    {
       processor->setFramesPerImage(frame_accumulation);
       processor->setNumImages(n_images);
-      processor->reset();
    }
+
+   processor->reset();
 
    acq_in_progress = true;
    acq_idx = 0;

@@ -44,22 +44,32 @@ void EventProcessor::processorThread()
             for (int i = 0; i < n; i++)
             {
                TcspcEvent evt = buffer[i];
-               if (evt.isMark() && (evt.mark() & TcspcEvent::FrameMarker) && !run_continuously)
+               if (evt.isMark() && (evt.mark() & TcspcEvent::FrameMarker))
                {
                   frame_increment++;
-                  if ((frame_idx + frame_increment) % frames_per_image == 0)
+
+                  if (run_continuously)
                   {
-                     image_increment++;
-                     if (image_idx + image_increment == n_images)
+                    if (frame_idx == -1)
+                     consumer->nextImageStarted();
+                  }
+                  else
+                  {
+                     if ((frame_idx + frame_increment) % frames_per_image == 0)
                      {
-                        consumer->imageSequenceFinished();
-                        break; // don't send any more events
-                     }
-                     else
-                     {
-                        consumer->nextImageStarted();
+                        image_increment++;
+                        if (image_idx + image_increment == n_images)
+                        {
+                           consumer->imageSequenceFinished();
+                           break; // don't send any more events
+                        }
+                        else
+                        {
+                           consumer->nextImageStarted();
+                        }
                      }
                   }
+
                }
                consumer->addEvent(evt);
             }
@@ -69,8 +79,9 @@ void EventProcessor::processorThread()
       frame_idx += frame_increment;
       image_idx += image_increment;
 
-      for (int i = 0; i < frame_increment; i++)
-         frame_increment_callback();
+      if (frame_increment_callback != nullptr)
+         for (int i = 0; i < frame_increment; i++)
+            frame_increment_callback();
 
       packet_buffer.finishedProcessingBuffer();
 
