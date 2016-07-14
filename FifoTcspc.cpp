@@ -27,6 +27,15 @@ void FifoTcspc::setLive(bool live_)
    live = live_;
 }
 
+void FifoTcspc::setFrameAccumulation(int frame_accumulation_)
+{
+   if (frame_accumulation_ != frame_accumulation)
+      emit frameAccumulationChanged(frame_accumulation_);
+
+   frame_accumulation = frame_accumulation_;
+}
+
+
 void FifoTcspc::startAcquisition(bool indeterminate)
 {
    assert(!live);

@@ -18,6 +18,7 @@ public:
       fs.seekg(data_position);
 
       image = std::make_shared<FLIMage>(using_pixel_markers, microtime_resolution, macrotime_resolution, 0, n_chan);
+      image->setBidirectional(bi_directional);
 
       processor = createEventProcessor<FlimFileReader>(this, 10000, 10000);
       processor->addTcspcEventConsumer(image);
@@ -97,6 +98,8 @@ public:
 
             if (isTag("UsingPixelMarkers"))
                using_pixel_markers = value;
+            if (isTag("BidirectionalScan"))
+               bi_directional = value;
          }
          else if (tag_type == TagDate)
          {
@@ -129,6 +132,7 @@ protected:
    double microtime_resolution;
    double macrotime_resolution;
    bool using_pixel_markers = false;
+   bool bi_directional = false;
 
    std::shared_ptr<FLIMage> image;
 };
