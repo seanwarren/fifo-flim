@@ -235,8 +235,9 @@ void Cronologic::checkCard()
    timetagger4_static_info staticinfo;
    timetagger4_get_static_info(device, &staticinfo);
    printf("Board Serial        : %d.%d\n", staticinfo.board_serial >> 24, staticinfo.board_serial & 0xffffff);
+   /* - TIMETAGGER4_XX_BOARDCONF does not seem to be defined as of API v1.1.0
    printf("Board Configuration : TimeTagger4-");
-   switch (staticinfo.board_configuration&TIMETAGGER4_BOARDCONF_MASK)
+   switch (staticinfo.board_configuration)
    {
    case TIMETAGGER4_1G_BOARDCONF:
       printf("1G\n");
@@ -249,6 +250,7 @@ void Cronologic::checkCard()
    default:
       printf("unknown\n");
    }
+   */
    printf("Board Revision      : %d\n", staticinfo.board_revision);
    printf("Firmware Revision   : %d.%d\n", staticinfo.firmware_revision, staticinfo.subversion_revision);
    printf("Driver Revision     : %d.%d.%d.%d\n", ((staticinfo.driver_revision >> 24) & 255), ((staticinfo.driver_revision >> 16) & 255), ((staticinfo.driver_revision >> 8) & 255), (staticinfo.driver_revision & 255));
