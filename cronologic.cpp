@@ -215,6 +215,8 @@ bool Cronologic::isParameterReadOnly(const QString& parameter)
 
 void Cronologic::checkCard()
 {
+   std::lock_guard<std::mutex> lk(cl_mutex);
+
    // prepare initialization
    timetagger4_init_parameters params;
    timetagger4_get_default_init_parameters(&params);
@@ -261,6 +263,8 @@ void Cronologic::checkCard()
 
 void Cronologic::configureCard()
 {
+   std::lock_guard<std::mutex> lk(cl_mutex);
+
    // prepare configuration
    timetagger4_configuration config;
    // fill configuration data structure with default values
@@ -332,6 +336,7 @@ void Cronologic::startModule()
       modulator->setModulation(true);
    }
 
+   std::lock_guard<std::mutex> lk(cl_mutex);
 
    CHECK(timetagger4_start_tiger(device));
    // start data capture
@@ -341,6 +346,8 @@ void Cronologic::startModule()
 
 void Cronologic::stopModule()
 {
+   std::lock_guard<std::mutex> lk(cl_mutex);
+
    CHECK(timetagger4_stop_tiger(device));
    CHECK(timetagger4_stop_capture(device));
    running = false;
@@ -353,7 +360,7 @@ Cronologic::~Cronologic()
 {
    stopFIFO();
 
-   // deactivate XTDC4
+   std::lock_guard<std::mutex> lk(cl_mutex);
    timetagger4_close(device);
 }
 
@@ -371,8 +378,11 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
    int continues = 0;
    do
    {
-
-      int status = timetagger4_read(device, &read_config, &read_data);
+      int status;
+      {
+         std::lock_guard<std::mutex> lk(cl_mutex);
+         status = timetagger4_read(device, &read_config, &read_data);
+      }
       
       if (status > 0)
       {
@@ -496,14 +506,12 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                // Is the marker the rising or falling edge?
                bool rising = hit_fast & 0x10;
                uint64_t time = (hit_fast>>8) + macro_time;
-               //uint64_t t = micro_time + adj_macro_time;
 
                if (rising)
                {
                   // We don't want to include rising edge in data stream
                   last_mark_rise_time = time;
                   ignore = true;
-                  
                }  
                else
                {

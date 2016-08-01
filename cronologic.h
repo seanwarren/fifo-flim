@@ -5,7 +5,7 @@
 #include "FLIMage.h"
 #include "FifoTcspc.h"
 #include "PLIMLaserModulator.h"
-
+#include <mutex>
 
 struct cl_event 
 {
@@ -89,6 +89,8 @@ private:
    double sync_rate_hz = 80.2e6;//TODO
    double sync_period_bins = 25;//TODO
    bool running = false;
+
+   std::mutex cl_mutex;
 
    PLIMLaserModulator* modulator = nullptr;
 
