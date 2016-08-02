@@ -40,6 +40,8 @@ public:
   
    void runContinuously() { run_continuously = true; }
 
+   bool isRunningContinuously() { return run_continuously; }
+
    void reset()
    { 
       frame_idx = -1;

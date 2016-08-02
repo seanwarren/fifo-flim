@@ -274,11 +274,11 @@ void FLIMage::refreshDisplay()
 
       for (int i = 0; i < n_chan; i++)
          std::fill(next_decay[i].begin(), next_decay[i].end(), 0);
-      /*
+      
       double max_dbl;
       cv::minMaxLoc(intensity, nullptr, &max_dbl);
       max_pixel_counts = (uint64_t) max_dbl;
-      */
+      
       emit decayUpdated();
    }
 }

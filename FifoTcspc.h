@@ -83,7 +83,7 @@ signals:
    void recordingStatusChanged(bool recording);
    void ratesUpdated(FlimRates rates);
    void fifoUsageUpdated(float usage);
-   void acquisitionStatusChanged(bool acq_in_progress);
+   void acquisitionStatusChanged(bool acq_in_progress, bool indeterminate);
    void progressUpdated(double progress);
 
 protected:
