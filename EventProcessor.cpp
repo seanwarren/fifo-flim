@@ -79,8 +79,8 @@ void EventProcessor::processorThread()
          for (int i = 0; i < frame_increment; i++)
             frame_increment_callback();
 
-      for (auto& c : consumers)
-         c->imageSequenceFinished();
+      //for (auto& c : consumers)
+      //   c->imageSequenceFinished();
 
       packet_buffer.finishedProcessingBuffer();
 
