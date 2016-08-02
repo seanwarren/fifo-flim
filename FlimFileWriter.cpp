@@ -24,7 +24,11 @@ void FlimFileWriter::nextImageStarted()
 void FlimFileWriter::imageSequenceFinished()
 {
    if (file.isOpen())
+   {
+      if (file.size() == 0)
+         emit error("Written file is empty");
       file.close();
+   }
    recording = false;
    file_name = "";
 }
