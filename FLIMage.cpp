@@ -2,7 +2,7 @@
 #include <limits>
 
 FLIMage::FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro_resolution_ps, int histogram_bits, int n_chan, QObject* parent) :
-   QObject(parent),
+   FlimDataSource(parent),
    using_pixel_markers(using_pixel_markers),
    time_resolution_ps(time_resolution_ps),
    macro_resolution_ps(macro_resolution_ps),

@@ -10,8 +10,9 @@
 #include <queue>
 
 #include "TcspcEvent.h"
+#include "FlimDataSource.h"
 
-class FLIMage : public QObject, public TcspcEventConsumer
+class FLIMage : public FlimDataSource, public TcspcEventConsumer
 {
    Q_OBJECT
 public:
@@ -55,11 +56,7 @@ public:
    }
 
    void setBidirectional(bool bi_directional_) { bi_directional = bi_directional_; }
-
-signals:
-   void decayUpdated();
-   void countRatesUpdated();
-
+   
 protected:
 
    void resize(int n_x, int n_y);

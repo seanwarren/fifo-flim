@@ -1,9 +1,9 @@
 project(fifo_flim) 
 
-cmake_minimum_required(VERSION 2.8.10)
+cmake_minimum_required(VERSION 3.3)
 
-option(USE_BECKER_HICKL FALSE)
-option(USE_CRONOLOGIC FALSE)
+option(USE_BECKER_HICKL OFF)
+option(USE_CRONOLOGIC ON)
 
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5SerialPort REQUIRED)
@@ -47,6 +47,7 @@ set(SOURCE
 )
 
 set(HEADERS
+   FlimDataSource.h
    FifoTcspc.h
    FLIMage.h
    TcspcEvent.h
