@@ -30,10 +30,17 @@ public:
 
    size_t readPackets(std::vector<TcspcEvent>& buffer)
    {
+      if (!fs.is_open())
+         return 0;
+
       size_t idx = 0;
       size_t buffer_size = buffer.size();
       while (idx < buffer_size && !fs.eof())
          fs.read(reinterpret_cast<char*>(&buffer[idx++]), sizeof(TcspcEvent));
+
+      if (fs.eof())
+         fs.close();
+
       return idx;
    }
 
