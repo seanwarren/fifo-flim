@@ -53,8 +53,8 @@ FifoTcspc(parent)
 
    int histogram_bits = ceil(log2(n_bins));
 
-   micro_time_resolution_ps = bin_size_ps * (1 << micro_downsample);
-   macro_time_resolution_ps = bin_size_ps * (1 << macro_downsample);
+   micro_time_resolution_ps = bin_size_ps * (1LL << micro_downsample);
+   macro_time_resolution_ps = bin_size_ps * (1LL << macro_downsample);
 
    cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, micro_time_resolution_ps, macro_time_resolution_ps, histogram_bits, n_chan);
 
