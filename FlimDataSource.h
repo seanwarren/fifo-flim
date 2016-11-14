@@ -3,7 +3,10 @@
 #include <QObject>
 #include <vector>
 #include <list>
+#include <memory>
 #include <opencv2/core.hpp>
+
+class FlimDataSourceWatcher;
 
 class FlimDataSource : public QObject
 {
@@ -11,11 +14,7 @@ class FlimDataSource : public QObject
 
 public:
 
-   FlimDataSource(QObject* parent) : 
-      QObject(parent)
-   {
-
-   }
+   FlimDataSource(QObject* parent = nullptr);
 
    virtual int getNumChannels() { return 1; }
    virtual double getTimeResolution() = 0;
@@ -28,9 +27,38 @@ public:
    virtual std::vector<double>& getCountRates() = 0;
    virtual std::vector<double>& getMaxInstantCountRates() = 0;
 
+   void registerWatcher(FlimDataSourceWatcher* watcher);
+   void unregisterWatcher(FlimDataSourceWatcher* watcher);
+   void requestDelete();
 
 signals:
    void decayUpdated();
    void countRatesUpdated();
+   void readComplete();
 
+private:
+
+   std::list<FlimDataSourceWatcher*> watchers;
+};
+
+class FlimDataSourceWatcher
+{
+public:
+
+   ~FlimDataSourceWatcher()
+   {
+      if (source != nullptr)
+         source->unregisterWatcher(this);
+   }
+
+   void setFlimDataSource(std::shared_ptr<FlimDataSource> source_)
+   {
+      source = source_;
+      source->registerWatcher(this);
+   }
+
+   virtual void sourceDeleteRequested() = 0;
+
+protected:
+   std::shared_ptr<FlimDataSource> source;
 };
