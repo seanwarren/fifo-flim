@@ -5,7 +5,7 @@
 #include <list>
 #include <memory>
 #include <opencv2/core.hpp>
-
+#include <mutex>
 class FlimDataSourceWatcher;
 
 class FlimDataSource : public QObject
@@ -39,13 +39,14 @@ signals:
 private:
 
    std::list<FlimDataSourceWatcher*> watchers;
+   std::mutex m;
 };
 
 class FlimDataSourceWatcher
 {
 public:
 
-   ~FlimDataSourceWatcher()
+   virtual ~FlimDataSourceWatcher()
    {
       if (source != nullptr)
          source->unregisterWatcher(this);

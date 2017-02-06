@@ -3,7 +3,7 @@ project(fifo_flim)
 cmake_minimum_required(VERSION 3.3)
 
 option(USE_BECKER_HICKL "Support for Becker Hickl" OFF)
-option(USE_CRONOLOGIC "Support for Cronologic Hickl" OFF)
+option(USE_CRONOLOGIC "Support for Cronologic" OFF)
 
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5SerialPort REQUIRED)
@@ -40,6 +40,7 @@ set(SOURCE
    SimTcspc.cpp
    EventProcessor.cpp
    FlimFileWriter.cpp
+   FlimDataSource.cpp
    lz4.c
    lz4hc.c
    ${BH_SOURCE}
