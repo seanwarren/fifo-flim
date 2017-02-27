@@ -74,7 +74,7 @@ void FlimFileWriter::writeFileHeader()
    writeTag("MicrotimeResolutionUnit_ps", tcspc->getMicroBaseResolutionPs());
    writeTag("MacrotimeResolutionUnit_ps", tcspc->getMacroBaseResolutionPs());
    writeTag("L4ZCompression", use_compression);
-   writeTag("L4ZMessageSize", lz4_stream.getMessageSize());
+   writeTag("L4ZMessageSize", (uint64_t) lz4_stream.getMessageSize());
    writeTag("UsingPixelMarkers", tcspc->usingPixelMarkers());
 
    for(auto&& m : metadata)

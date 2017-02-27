@@ -1,6 +1,5 @@
 #include "EventProcessor.h"
 #include <iostream>
-#include <windows.h>
 
 void EventProcessor::start()
 {
