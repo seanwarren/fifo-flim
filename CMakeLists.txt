@@ -74,7 +74,7 @@ add_library(fifo_flim OBJECT ${SOURCE}
                              ${UI_HEADERS} 
                              ${UI_RESOURCES})
 
-set(fifo_flim_DEFINITIONS ${Cronologic_DEFINITIONS} ${BeckerHickl_DEFINITIONS})
+set(fifo_flim_DEFINITIONS ${Cronologic_DEFINITIONS} ${BeckerHickl_DEFINITIONS} PARENT_SCOPE)
 set(fifo_flim_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${COMMON_INCLUDE} PARENT_SCOPE)
 set(fifo_flim_LIBS ${OpenCV_LIBS} 
                    ${InstrumentControl_LIBRARIES} 
