@@ -1,9 +1,8 @@
 project(fifo_flim) 
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.7)
 
-option(USE_BECKER_HICKL "Support for Becker Hickl" OFF)
-option(USE_CRONOLOGIC "Support for Cronologic" OFF)
+set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5SerialPort REQUIRED)
@@ -15,21 +14,17 @@ if (OPENMP_FOUND)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-if(USE_BECKER_HICKL)
-   set(BH_DIR "C:/Program Files (x86)/BH/SPCM/DLL")
-   set(BH_SOURCE BH.cpp)
-   set(BH_HEADERS BH.h)
-   set(BH_LIB ${BH_DIR}/LIB/MSVC64/spcm64.lib)
-   set(BH_INCLUDE ${BH_DIR})
-endif()
-if(USE_CRONOLOGIC)
-   set(CL_DIR "C:/Program Files/cronologic/TimeTagger4/driver")
-   set(CL_SOURCE cronologic.cpp)
-   set(CL_HEADERS cronologic.h)
-   set(CL_LIB ${fifo_flim_LIBS} ${CL_DIR}/x64/xtdc4_driver_64.lib)
-   set(CL_INCLUDE ${CL_DIR}/include)
+find_package(Cronologic)
+add_definitions(${Cronologic_DEFINITIONS}) 
+if(Cronologic_FOUND)
+   set(CL_SOURCE cronologic.h cronologic.cpp)
 endif()
 
+find_package(BeckerHickl)
+add_definitions(${BeckerHickl_DEFINITIONS}) 
+if(BeckerHickl_FOUND)
+   set(BH_SOURCE BH.h BH.cpp)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 add_definitions(${QT_DEFINITIONS}) 
@@ -50,6 +45,7 @@ set(SOURCE
 set(HEADERS
    FlimDataSource.h
    FifoTcspc.h
+   FifoTcspcFactory.h
    FLIMage.h
    TcspcEvent.h
    PacketBuffer.h
@@ -62,14 +58,26 @@ set(HEADERS
    LZ4Stream.h
    LZ4ThreadedStream.h
    PLIMLaserModulator.h
-   ${BH_HEADERS}
-   ${CL_HEADERS}
 )
 
-set(COMMON_INCLUDE ${BH_INCLUDE} ${CL_INCLUDE} ${OpenCV_INCLUDE_DIRS} ${InstrumentControl_INCLUDE_DIR})
-include_directories(${Qt5Widgets_INCLUDE_DIRS} ${Qt5SerialPort_INCLUDE_DIRS} ${COMMON_INCLUDE})
+set(COMMON_INCLUDE ${BeckerHickl_INCLUDE_DIRS} 
+                   ${Cronologic_INCLUDE_DIRS} 
+                   ${OpenCV_INCLUDE_DIRS} 
+                   ${InstrumentControl_INCLUDE_DIR})
 
-add_library(fifo_flim OBJECT ${SOURCE} ${HEADERS} ${UI_HEADERS} ${UI_RESOURCES})
+include_directories(${Qt5Widgets_INCLUDE_DIRS} 
+                    ${Qt5SerialPort_INCLUDE_DIRS} 
+                    ${COMMON_INCLUDE})
 
+add_library(fifo_flim OBJECT ${SOURCE} 
+                             ${HEADERS} 
+                             ${UI_HEADERS} 
+                             ${UI_RESOURCES})
+
+set(fifo_flim_DEFINITIONS ${Cronologic_DEFINITIONS} ${BeckerHickl_DEFINITIONS})
 set(fifo_flim_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR} ${COMMON_INCLUDE} PARENT_SCOPE)
-set(fifo_flim_LIBS ${OpenCV_LIBS} ${InstrumentControl_LIBRARIES} ${BH_LIB} ${CL_LIB} PARENT_SCOPE)
+set(fifo_flim_LIBS ${OpenCV_LIBS} 
+                   ${InstrumentControl_LIBRARIES} 
+                   ${BeckerHickl_LIBRARIES} 
+                   ${Cronologic_LIBRARIES} 
+                   PARENT_SCOPE)
