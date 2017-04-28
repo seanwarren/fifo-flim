@@ -38,7 +38,7 @@ void FLIMage::eventStreamAboutToStart()
    macro_time_offset = 0;
    frame_duration = 0;
    line_start_time = 0;
-   line_duration = 1;
+   line_duration = -1;
    frame_duration = 0;
    cur_x = cur_y = -1;
    frame_idx = -1;
@@ -89,7 +89,7 @@ bool FLIMage::isValidPixel()
              (cur_y < n_y);
    else
       return (line_active) &&
-             (frame_idx >= 1) &&
+             (frame_idx >= 0) &&
              (cur_x >= 0) &&
              (cur_x < n_x) &&
              (cur_y >= 0) &&
@@ -132,7 +132,6 @@ void FLIMage::addEvent(const TcspcEvent& p)
             line_start_time = macro_time;
             line_active = true;
 
-
             cur_x = 0; // bit of a bodge - first pixel clock arrives too soon on current PLIM setup. should be -1
 
             if (bi_directional)
@@ -144,6 +143,9 @@ void FLIMage::addEvent(const TcspcEvent& p)
          {
             uint64_t this_line_duration = macro_time - line_start_time;
             frame_duration += this_line_duration;
+
+            if (line_duration == -1)
+               line_duration = this_line_duration;
 
             line_active = false;
             num_end++;

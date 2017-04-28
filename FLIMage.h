@@ -73,7 +73,7 @@ protected:
 
    uint64_t macro_time_offset = 0;
    uint64_t line_start_time = 0;
-   double line_duration = 1;
+   double line_duration = -1;
    double frame_duration = 0;
    bool active = false;
 
