@@ -446,7 +446,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             if ((idx + 1) >= buffer.size())
                buffer.resize(buffer.size() * 2);
             // Insert pixel marker for PLIM
-            buffer[idx++] = { macro_time & 0xFFFF, 0xF | (MARK_PIXEL << 4) };
+            buffer[idx++] = { macro_time & 0xFFFF, 0xF | (MarkPixel << 4) };
          }
 
          uint64_t div_macro_time = macro_time >> macro_downsample;
@@ -519,19 +519,19 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
                   if (marker_length < 30e3)
                   {
-                     marker = MARK_LINE_END; // 23e3
+                     marker = MarkLineEnd; // 23e3
                      line_active = false;
                   }
                   else if (marker_length < 100e3)
                   {
-                     marker = MARK_LINE_START; // 71
+                     marker = MarkLineStart; // 71
                      line_active = true;
                      n_line++;
                      n_pixel = 0;
                   }
                   else if (marker_length < 200e3)
                   {
-                     marker = MARK_FRAME; // 154e3
+                     marker = MarkFrame; // 154e3
                      n_line = 0;
                   }
                   else

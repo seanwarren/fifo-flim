@@ -16,7 +16,7 @@ class FifoTcspcFactory
 public:
    static FifoTcspc* create(const QString& type, QObject* parent = nullptr)
    {
-      if (type.toLower() == "Simulated")
+      if (type.toLower() == "sim")
       {
          return new SimTcspc(parent);
       }

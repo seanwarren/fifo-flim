@@ -4,13 +4,6 @@
 #include "FifoTcspc.h"
 #include <random>
 
-struct sim_event
-{
-   uint32_t macro_time;
-   uint32_t micro_time;
-   uint8_t channel;
-   uint8_t mark;
-};
 
 class SimTcspc : public FifoTcspc
 {
@@ -25,7 +18,7 @@ public:
 
    double getSyncRateHz() { return 1e12/T; };
    double getMicroBaseResolutionPs() { return time_resolution_ps; }
-   double getMacroBaseResolutionPs() { return T; }
+   double getMacroBaseResolutionPs() { return macro_resolution_ps; }
    int getNumChannels() { return n_chan; }
    int getNumTimebins() { return 1 << n_bits; };
    bool usingPixelMarkers() { return false; }
@@ -40,38 +33,45 @@ private:
    void setSyncThreshold(float threshold);
    float getSyncThreshold();
 
+   void loadIntensityImage();
+   void configureSyncTiming();
+
    void readRemainingPhotonsFromStream();
 
    int n_px = 64;
-   int n_chan = 4;
+   int n_chan = 2;
    int n_bits = 8;
 
-   int cur_px = n_px;
-   int cur_py = n_px;
+   int cur_px;
+   int cur_py;
 
    double T = 12500;
    double time_resolution_ps;
+   double macro_resolution_ps = 1e3; 
 
-   int pixel_duration = 10;
-   int inter_line_duration = 100;
-   int inter_frame_duration = 1000;
+   int pixel_duration;
+   int inter_line_duration;
+   int inter_frame_duration;
    uint64_t cur_macro_time = 0;
    uint64_t macro_time_rollovers = 0;
    std::default_random_engine generator;
+
+   int px_offset;
 
 protected:
 
    void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx)
    {
-      uint64_t new_macro_time_rollovers = macro_time / 0xFFFF;
+      uint64_t new_macro_time_rollovers = macro_time / (1 << 16);
 
-      if ((idx + new_macro_time_rollovers - macro_time_rollovers) > buffer.size())
-         buffer.resize(idx * 2);
+      while ((idx + new_macro_time_rollovers - macro_time_rollovers) > buffer.size())
+         buffer.resize(buffer.size() * 2);
 
       while (new_macro_time_rollovers > macro_time_rollovers)
       {
-         buffer[idx++] = { 0, 0xF };
-         macro_time_rollovers++;
+         uint16_t r = std::min(new_macro_time_rollovers - macro_time_rollovers, 0xFFFFULL);
+         buffer[idx++] = { r, 0xF };
+         macro_time_rollovers += r;
       }
 
       TcspcEvent evt;
@@ -84,5 +84,7 @@ protected:
       buffer[idx++] = evt;
 
    }
+
+   cv::Mat intensity;
 
 };

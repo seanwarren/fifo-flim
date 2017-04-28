@@ -11,12 +11,14 @@
 #include "EventProcessor.h"
 #include "FLIMage.h"
 
-#define MARK_PHOTON     0x0
-#define MARK_PIXEL      0x1
-#define MARK_LINE_START 0x2
-#define MARK_LINE_END   0x4
-#define MARK_FRAME      0x8
-
+enum Markers
+{
+   MarkPhoton = 0x0,
+   MarkPixel = 0x1,
+   MarkLineStart = 0x2,
+   MarkLineEnd = 0x4,
+   MarkFrame = 0x8
+};
 
 class FlimRates
 {
