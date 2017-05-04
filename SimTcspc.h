@@ -25,6 +25,31 @@ public:
 
    const QString describe() { return "Simulated TCSPC module"; }
 
+   void setParameter(const QString& parameter, ParameterType type, QVariant value) 
+   {
+      if (parameter == "DisplacementFrequency")
+         displacement_frequency = value.toDouble();
+      if (parameter == "DisplacementAmplitude")
+         displacement_amplitude = value.toDouble();
+   };
+
+   QVariant getParameter(const QString& parameter, ParameterType type) 
+   {
+      if (parameter == "DisplacementFrequency")
+         return displacement_frequency;
+      if (parameter == "DisplacementAmplitude")
+         return displacement_amplitude;
+   };
+
+   QVariant getParameterLimit(const QString& parameter, ParameterType type, Limit limit)
+   {
+      if (limit == Limit::Min)
+         return 0;
+      else
+         return 1e6;
+   };
+
+
 private:
 
    void startModule();
@@ -42,6 +67,8 @@ private:
    int n_chan = 2;
    int n_bits = 8;
 
+   int gen_frame = 0;
+
    int cur_px;
    int cur_py;
 
@@ -58,6 +85,9 @@ private:
 
    int px_offset;
 
+   double displacement_frequency = 100;
+   double displacement_amplitude = 0;
+
 protected:
 
    void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx)
@@ -69,7 +99,7 @@ protected:
 
       while (new_macro_time_rollovers > macro_time_rollovers)
       {
-         uint16_t r = std::min(new_macro_time_rollovers - macro_time_rollovers, 0xFFFFULL);
+         uint16_t r = (uint16_t) std::min(new_macro_time_rollovers - macro_time_rollovers, 0xFFFFULL);
          buffer[idx++] = { r, 0xF };
          macro_time_rollovers += r;
       }

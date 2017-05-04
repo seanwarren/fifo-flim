@@ -33,8 +33,7 @@ void SimTcspc::loadIntensityImage()
    try
    {  
       cv::Mat I = cv::imread("simulated_intensity.png", -1);
-      cv::resize(I, intensity, cv::Size(256, 256), 0, 0, CV_INTER_AREA);
-      intensity.convertTo(intensity, CV_16U);
+      I.convertTo(intensity, CV_16U);
    }
    catch (cv::Exception e)
    {
@@ -44,8 +43,8 @@ void SimTcspc::loadIntensityImage()
    }
 
    int i_px = std::min(intensity.size().width, intensity.size().height);
-   n_px = i_px * 0.75;
-   px_offset = i_px * 0.125;
+   n_px = i_px / 2;
+   px_offset = i_px / 4;
    cur_px = n_px;
    cur_py = n_px;
 }
@@ -73,7 +72,7 @@ void SimTcspc::startModule()
 {
    cur_px = n_px;
    cur_py = n_px;
-
+   gen_frame = -1;
 }
 
 SimTcspc::~SimTcspc()
@@ -88,8 +87,8 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
 
    int idx = 0;
 
-   if (cur_px % 16 == 0)
-      QThread::usleep(100);
+   //if (cur_px % 100 == 0)
+   //   QThread::usleep(1);
 
 
    // start new line?
@@ -100,7 +99,7 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
       // start new frame?
       if (cur_py >= (n_px-1))
       {
-          cur_py = 0;
+         cur_py = 0;
          addEvent(cur_macro_time, 0, 0, MarkLineEnd, buffer, idx);
          cur_macro_time += inter_frame_duration; 
          addEvent( cur_macro_time, 0, 0, MarkFrame, buffer, idx);
@@ -112,15 +111,17 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
          addEvent(cur_macro_time, 0, 0, MarkLineEnd, buffer, idx);
          cur_macro_time += inter_line_duration;
          addEvent(cur_macro_time, 0, 0, MarkLineStart, buffer, idx);
+         gen_frame++;
       }
    }
 
-   double approx_frame_time = n_px * n_px * pixel_duration;
+   double approx_frame_time = n_px * (n_px * pixel_duration + inter_line_duration);
 
-   double mag = 10;
-   double theta = cur_macro_time / approx_frame_time * 4.3;
-   int xsel = cur_px + mag * sin(theta) + px_offset;
-   int ysel = cur_py + mag * cos(theta) + px_offset;
+   double local_scale = (gen_frame > 0) ? 1 : 0;
+
+   double theta = cur_macro_time / approx_frame_time * displacement_frequency * 2 * 3.14159265359;
+   int xsel = cur_px + displacement_amplitude * local_scale * sin(theta) + px_offset;
+   int ysel = cur_py + displacement_amplitude * local_scale * cos(theta) + px_offset;
 
    cv::Size sz = intensity.size();
    cv::Rect rect(0, 0, sz.width, sz.height);
@@ -128,9 +129,7 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
    // Average number of photons
    double N = 1;
    if (rect.contains(cv::Point(xsel, ysel)))
-      N += intensity.at<uint16_t>(xsel, ysel);
-   else
-      N = N;
+      N += 0.1 * intensity.at<uint16_t>(xsel, ysel);
    //abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
 
    std::poisson_distribution<int> N_dist(N);
