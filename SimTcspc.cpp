@@ -11,6 +11,7 @@
 
 using namespace std;
 
+const double PI = 3.141592653589793238463;
 
 SimTcspc::SimTcspc(QObject* parent) :
 FifoTcspc(parent)
@@ -70,6 +71,8 @@ void SimTcspc::init()
 
 void SimTcspc::startModule()
 {
+   macro_time_rollovers = 0;
+   cur_macro_time = 0;
    cur_px = n_px;
    cur_py = n_px;
    gen_frame = -1;
@@ -101,9 +104,10 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
       {
          cur_py = 0;
          addEvent(cur_macro_time, 0, 0, MarkLineEnd, buffer, idx);
-         cur_macro_time += inter_frame_duration; 
+         cur_macro_time += inter_line_duration + inter_frame_duration; 
          addEvent( cur_macro_time, 0, 0, MarkFrame, buffer, idx);
          addEvent(cur_macro_time, 0, 0, MarkLineStart, buffer, idx);
+         gen_frame++;
       }
       else
       {
@@ -111,25 +115,24 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
          addEvent(cur_macro_time, 0, 0, MarkLineEnd, buffer, idx);
          cur_macro_time += inter_line_duration;
          addEvent(cur_macro_time, 0, 0, MarkLineStart, buffer, idx);
-         gen_frame++;
       }
    }
 
    double approx_frame_time = n_px * (n_px * pixel_duration + inter_line_duration);
 
-   double local_scale = (gen_frame > 0) ? 1 : 0;
+   double local_scale = (gen_frame > 0) ? 1.0 : 0.0;
 
-   double theta = cur_macro_time / approx_frame_time * displacement_frequency * 2 * 3.14159265359;
-   int xsel = cur_px + displacement_amplitude * local_scale * sin(theta) + px_offset;
-   int ysel = cur_py + displacement_amplitude * local_scale * cos(theta) + px_offset;
+   double theta = cur_macro_time / approx_frame_time * displacement_frequency * 2.0 * PI;
+   int xsel = cur_px + px_offset + cos(PI / 180.0 * displacement_angle) * displacement_amplitude * local_scale * sin(theta);
+   int ysel = cur_py + px_offset + sin(PI / 180.0 * displacement_angle) * displacement_amplitude * local_scale * cos(theta);
 
    cv::Size sz = intensity.size();
    cv::Rect rect(0, 0, sz.width, sz.height);
 
    // Average number of photons
    double N = 1;
-   if (rect.contains(cv::Point(xsel, ysel)))
-      N += 0.1 * intensity.at<uint16_t>(xsel, ysel);
+   if (rect.contains(cv::Point(ysel, xsel)))
+      N += 0.1 * intensity.at<uint16_t>(ysel, xsel);
    //abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
 
    std::poisson_distribution<int> N_dist(N);
@@ -159,7 +162,6 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
       uint64_t macro_time = cur_macro_time + (i * pixel_duration) / n; // space photons evenly across pixel
 
       addEvent(macro_time, micro_time, channel, MarkPhoton, buffer, idx);
-
    }
 
    cur_macro_time += pixel_duration;

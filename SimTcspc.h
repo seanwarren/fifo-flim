@@ -31,6 +31,8 @@ public:
          displacement_frequency = value.toDouble();
       if (parameter == "DisplacementAmplitude")
          displacement_amplitude = value.toDouble();
+      if (parameter == "DisplacementAngle")
+         displacement_angle = value.toDouble();
    };
 
    QVariant getParameter(const QString& parameter, ParameterType type) 
@@ -39,14 +41,23 @@ public:
          return displacement_frequency;
       if (parameter == "DisplacementAmplitude")
          return displacement_amplitude;
+      if (parameter == "DisplacementAngle")
+         return displacement_angle;
    };
 
    QVariant getParameterLimit(const QString& parameter, ParameterType type, Limit limit)
    {
       if (limit == Limit::Min)
+      {
          return 0;
+      }
       else
-         return 1e6;
+      {
+         if (parameter == "DisplacementAngle")
+            return 360;
+         else
+            return 1e3;
+      }
    };
 
 
@@ -87,6 +98,7 @@ private:
 
    double displacement_frequency = 100;
    double displacement_amplitude = 0;
+   double displacement_angle = 0;
 
 protected:
 
