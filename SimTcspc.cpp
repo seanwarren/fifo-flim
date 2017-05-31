@@ -90,10 +90,6 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
 
    int idx = 0;
 
-   //if (cur_px % 100 == 0)
-   //   QThread::usleep(1);
-
-
    // start new line?
    if (cur_px == n_px)
    {
@@ -132,8 +128,7 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
    // Average number of photons
    double N = 1;
    if (rect.contains(cv::Point(ysel, xsel)))
-      N += 0.1 * intensity.at<uint16_t>(ysel, xsel);
-   //abs((cur_px - (n_px >> 1)) * (cur_py - (n_px >> 1))) * 5 + 500;
+      N += 0.04 * intensity.at<uint16_t>(ysel, xsel);
 
    std::poisson_distribution<int> N_dist(N);
    std::uniform_int_distribution<int> ch_dist(0, n_chan - 1);
@@ -171,12 +166,6 @@ size_t SimTcspc::readPackets(std::vector<TcspcEvent>& buffer)
 }
 
 
-//============================================================
-// Configure card for FIFO mode
-//
-// This function is mostly lifted from the use_spcm.c 
-// example file
-//============================================================
 void SimTcspc::configureModule()
 {
 

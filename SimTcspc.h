@@ -43,6 +43,8 @@ public:
          return displacement_amplitude;
       if (parameter == "DisplacementAngle")
          return displacement_angle;
+
+      return QVariant();
    };
 
    QVariant getParameterLimit(const QString& parameter, ParameterType type, Limit limit)
@@ -58,6 +60,8 @@ public:
          else
             return 1e3;
       }
+
+      return QVariant();
    };
 
 
@@ -75,7 +79,7 @@ private:
    void readRemainingPhotonsFromStream();
 
    int n_px = 64;
-   int n_chan = 2;
+   int n_chan = 1;
    int n_bits = 8;
 
    int gen_frame = 0;
