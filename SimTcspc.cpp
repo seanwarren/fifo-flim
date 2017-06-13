@@ -33,13 +33,17 @@ void SimTcspc::loadIntensityImage()
 {
    try
    {  
+#ifdef SUPPRESS_OPENCV_HIGHGUI
+      throw (std::exception("Compile in Release or Debug mode"));
+#else
       cv::Mat I = cv::imread("simulated_intensity.png", -1);
       I.convertTo(intensity, CV_16U);
+#endif
    }
-   catch (cv::Exception e)
+   catch (std::exception e)
    {
       std::cout << "Error loading simulated intensity image" << std::endl;
-      std::cout << e.msg << std::endl;
+      std::cout << e.what() << std::endl;
       intensity = cv::Mat(256, 256, CV_16U, cv::Scalar(400));
    }
 
