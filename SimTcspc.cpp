@@ -34,7 +34,7 @@ void SimTcspc::loadIntensityImage()
    try
    {  
 #ifdef SUPPRESS_OPENCV_HIGHGUI
-      throw (std::exception("Compile in Release or Debug mode"));
+      throw (std::runtime_error("Compile in Release or Debug mode"));
 #else
       cv::Mat I = cv::imread("simulated_intensity.png", -1);
       I.convertTo(intensity, CV_16U);
