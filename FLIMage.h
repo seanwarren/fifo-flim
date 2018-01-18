@@ -55,7 +55,7 @@ public:
       resize(n_x, n_y);
    }
 
-   void setBidirectional(bool bi_directional_) { bi_directional = bi_directional_; }
+   void setBidirectional(bool bidirectional_) { bidirectional = bidirectional_; }
    
 protected:
 
@@ -106,7 +106,7 @@ protected:
    const int refresh_time_ms = 1000;
 
    bool using_pixel_markers = false;
-   bool bi_directional = false;
+   bool bidirectional = false;
 
    int cur_dir = +1;
 

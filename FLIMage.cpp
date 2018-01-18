@@ -134,7 +134,7 @@ void FLIMage::addEvent(const TcspcEvent& p)
 
             cur_x = 0; // bit of a bodge - first pixel clock arrives too soon on current PLIM setup. should be -1
 
-            if (bi_directional)
+            if (bidirectional)
                cur_dir *= -1;
             cur_y++;
          }
