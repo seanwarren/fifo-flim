@@ -28,8 +28,6 @@ set(SOURCE
    EventProcessor.cpp
    FlimFileWriter.cpp
    FlimDataSource.cpp
-   lz4.c
-   lz4hc.c
    ${BH_SOURCE}
    ${CL_SOURCE}
 )
@@ -45,10 +43,8 @@ set(HEADERS
    EventProcessor.h
    FlimFileWriter.h
    FlimFileReader.h
-   lz4.h
-   lz4hc.h
-   LZ4Stream.h
-   LZ4ThreadedStream.h
+#   LZ4Stream.h
+#   LZ4ThreadedStream.h
    PLIMLaserModulator.h
 )
 
