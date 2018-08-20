@@ -5,7 +5,6 @@
 #include <QFile>
 #include <QDataStream>
 #include <QDateTime>
-#include "LZ4ThreadedStream.h"
 #include "TcspcEvent.h"
 #include "FifoTcspc.h"
 #include <map>
@@ -61,7 +60,7 @@ protected:
    QDataStream data_stream;
    QByteArray header;
    QDataStream header_stream;
-   LZ4Stream lz4_stream;
+   //LZ4Stream lz4_stream;
 
    std::map<QString, QVariant> metadata;
 

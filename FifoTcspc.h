@@ -7,7 +7,6 @@
 #include <thread>
 #include <QFile> 
 #include <memory>
-#include "LZ4Stream.h"
 #include "EventProcessor.h"
 #include "FLIMage.h"
 
