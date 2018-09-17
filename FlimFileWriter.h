@@ -60,7 +60,6 @@ protected:
    QDataStream data_stream;
    QByteArray header;
    QDataStream header_stream;
-   //LZ4Stream lz4_stream;
 
    std::map<QString, QVariant> metadata;
 
@@ -85,5 +84,4 @@ protected:
    std::vector<uint16_t> buffer;
    int buffer_pos = 0;
    int image_index = 0;
-   bool use_compression = false;
 };

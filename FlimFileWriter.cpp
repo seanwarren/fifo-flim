@@ -34,23 +34,8 @@ void FlimFileWriter::addEvent(const TcspcEvent& evt)
 {
    if (recording && (image_index > 0))
    {
-      /*
-      if (use_compression)
-      {
-         buffer[buffer_pos++] = evt.macro_time;
-         buffer[buffer_pos++] = evt.micro_time;
-         if (buffer_pos == buffer.size())
-         {
-            lz4_stream.write(reinterpret_cast<const char*>(buffer.data()), sizeof(uint16_t)*buffer.size());
-            buffer_pos = 0;
-         }
-      }  
-      else
-      */
-      {
-         data_stream.writeRawData(reinterpret_cast<const char*>(&evt.macro_time), sizeof(evt.macro_time));
-         data_stream.writeRawData(reinterpret_cast<const char*>(&evt.micro_time), sizeof(evt.micro_time));
-      }
+      data_stream.writeRawData(reinterpret_cast<const char*>(&evt.macro_time), sizeof(evt.macro_time));
+      data_stream.writeRawData(reinterpret_cast<const char*>(&evt.micro_time), sizeof(evt.micro_time));
    }
 } 
 
@@ -74,8 +59,6 @@ void FlimFileWriter::writeFileHeader()
    writeTag("NumChannels", (int64_t) tcspc->getNumChannels());
    writeTag("MicrotimeResolutionUnit_ps", tcspc->getMicroBaseResolutionPs());
    writeTag("MacrotimeResolutionUnit_ps", tcspc->getMacroBaseResolutionPs());
-   writeTag("L4ZCompression", use_compression);
-   //writeTag("L4ZMessageSize", (uint64_t) lz4_stream.getMessageSize());
    writeTag("UsingPixelMarkers", tcspc->usingPixelMarkers());
 
    for(auto&& m : metadata)
@@ -129,7 +112,6 @@ void FlimFileWriter::openFile()
 
    data_stream.setDevice(&file);
    data_stream.setByteOrder(QDataStream::LittleEndian);
-   //lz4_stream.setDevice(&file);
 
    writeFileHeader();
 }

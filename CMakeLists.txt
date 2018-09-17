@@ -43,8 +43,6 @@ set(HEADERS
    EventProcessor.h
    FlimFileWriter.h
    FlimFileReader.h
-#   LZ4Stream.h
-#   LZ4ThreadedStream.h
    PLIMLaserModulator.h
 )
 
