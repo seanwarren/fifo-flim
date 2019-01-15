@@ -139,9 +139,9 @@ void FlimFileWriter::writeTag(const QString& tag_string, const QVariant& value)
    if (type == QVariant::Type::Double)
       writeTag(tag, value.toDouble());
    else if (type == QVariant::Type::Int)
-      writeTag(tag, value.toLongLong());
+      writeTag(tag, (int64_t) value.toLongLong());
    else if (type == QVariant::Type::UInt)
-      writeTag(tag, value.toULongLong());
+      writeTag(tag, (uint64_t) value.toULongLong());
    else if (type == QVariant::Type::Bool)
       writeTag(tag, value.toBool());
    else if (type == QVariant::Type::String)

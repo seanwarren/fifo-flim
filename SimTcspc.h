@@ -109,13 +109,14 @@ protected:
    void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx)
    {
       uint64_t new_macro_time_rollovers = macro_time / (1 << 16);
+      uint64_t rollover_max = 0xFFFF;
 
       while ((idx + new_macro_time_rollovers - macro_time_rollovers) > buffer.size())
          buffer.resize(buffer.size() * 2);
 
       while (new_macro_time_rollovers > macro_time_rollovers)
       {
-         uint16_t r = (uint16_t) std::min(new_macro_time_rollovers - macro_time_rollovers, 0xFFFFULL);
+         uint16_t r = (uint16_t) std::min(new_macro_time_rollovers - macro_time_rollovers, rollover_max);
          buffer[idx++] = { r, 0xF };
          macro_time_rollovers += r;
       }
