@@ -4,8 +4,7 @@ cmake_minimum_required(VERSION 3.7)
 
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5SerialPort REQUIRED)
+find_package(Qt5 COMPONENTS Widgets SerialPort REQUIRED)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 
 find_package(Cronologic)
