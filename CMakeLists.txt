@@ -1,4 +1,4 @@
-project(fifo_flim) 
+project(fifo-flim) 
 
 cmake_minimum_required(VERSION 3.7)
 
@@ -45,20 +45,20 @@ set(HEADERS
    PLIMLaserModulator.h
 )
 
-add_library(fifo_flim STATIC ${SOURCE} 
+add_library(fifo-flim STATIC ${SOURCE} 
                              ${HEADERS} 
                              ${UI_HEADERS} 
                              ${UI_RESOURCES})
 
-target_compile_definitions(fifo_flim PUBLIC ${Cronologic_DEFINITIONS} ${BeckerHickl_DEFINITIONS})
-target_include_directories(fifo_flim INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} 
+target_compile_definitions(fifo-flim PUBLIC ${Cronologic_DEFINITIONS} ${BeckerHickl_DEFINITIONS})
+target_include_directories(fifo-flim INTERFACE ${CMAKE_CURRENT_SOURCE_DIR} 
                                      PUBLIC    ${BeckerHickl_INCLUDE_DIRS} 
                                                ${Cronologic_INCLUDE_DIRS} 
-                                     PRIVATE   ${OpenCV_INCLUDE_DIRS} 
-                                               ${Qt5Widgets_INCLUDE_DIRS} 
-                                               ${Qt5SerialPort_INCLUDE_DIRS})
+                                     PRIVATE   ${OpenCV_INCLUDE_DIRS})
 
-target_link_libraries(fifo_flim ${OpenCV_LIBS} 
+target_link_libraries(fifo-flim ${OpenCV_LIBS} 
                                 ${BeckerHickl_LIBRARIES} 
                                 ${Cronologic_LIBRARIES}
-                                InstrumentControl)
+                                InstrumentControl
+                                Qt5::Widgets
+                                Qt5::SerialPort)
