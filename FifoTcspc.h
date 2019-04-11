@@ -9,6 +9,8 @@
 #include <memory>
 #include "EventProcessor.h"
 #include "FLIMage.h"
+#include <unordered_map>
+#include <chrono>
 
 enum Markers
 {
@@ -19,17 +21,51 @@ enum Markers
    MarkFrame = 0x8
 };
 
-class FlimRates
+enum FlimWarningStatus
+{
+   OK       = 0,
+   Warning  = 1,
+   Critical = 2
+};
+
+class FlimWarning
 {
 public:
-   FlimRates(float sync = 0.0f, float cfd = 0.0f, float tac = 0.0f, float adc = 0.0f) :
-      sync(sync), cfd(cfd), tac(tac), adc(adc)
+
+   FlimWarning(FlimWarningStatus status = OK, std::chrono::system_clock::time_point expiry = std::chrono::system_clock::now() + std::chrono::seconds(2)) :
+      status(status), expiry(expiry)
    {}
 
-   float sync;
-   float cfd;
-   float tac;
-   float adc;
+   FlimWarningStatus getStatus() const
+   {
+      if (std::chrono::system_clock::now() < expiry)
+         return status;
+      else
+         return OK;
+   }
+
+private:
+   FlimWarningStatus status = OK;
+   std::chrono::system_clock::time_point expiry;
+};
+
+class FlimStatus
+{
+public:
+   FlimStatus(const QStringList& rate_names = { "sync" }, const QStringList& warning_names = {"fifo_overflow"})
+   {
+      for (auto& name : rate_names)
+         rates[name] = 0;
+      for (auto& name : warning_names)
+         warnings[name] = FlimWarning(OK);
+   }
+
+   FlimStatus(QMap<QString, float> rates, QMap<QString, FlimWarning> warnings) :
+      rates(rates), warnings(warnings)
+   {}
+
+   QMap<QString, float> rates;
+   QMap<QString, FlimWarning> warnings;
 };
 
 
@@ -38,7 +74,7 @@ class FifoTcspc : public ParametricImageSource
    Q_OBJECT
 
 public:
-   FifoTcspc(QObject* parent);
+   FifoTcspc(FlimStatus flim_status, QObject* parent = 0);
    virtual ~FifoTcspc() {};
 
    virtual void init() {};
@@ -60,7 +96,7 @@ public:
    bool isLive() { return live; };
    bool acquisitionInProgress() { return acq_in_progress; }
 
-   FlimRates getRates() { return rates; };
+   FlimStatus getStatus() { return flim_status; };
 
    virtual int getNumChannels() = 0;
    virtual int getNumTimebins() = 0;
@@ -82,7 +118,7 @@ signals:
 
    void frameAccumulationChanged(int frame_accumulation);
    void recordingStatusChanged(bool recording);
-   void ratesUpdated(FlimRates rates);
+   void ratesUpdated();
    void fifoUsageUpdated(float usage);
    void acquisitionStatusChanged(bool acq_in_progress, bool indeterminate);
    void progressUpdated(double progress);
@@ -114,7 +150,7 @@ protected:
    uint64_t packets_read = 0;
    uint64_t packets_processed = 0;
 
-   FlimRates rates;
+   FlimStatus flim_status;
 
    std::shared_ptr<EventProcessor> processor;
 };

@@ -20,7 +20,7 @@ void CHECK(int err)
 }
 
 Cronologic::Cronologic(QObject* parent) :
-FifoTcspc(parent)
+   FifoTcspc(FlimStatus({ "SYNC" }, {"Slow sync rate", "FIFO buffer full", "Host buffer full"}), parent)
 {
    QString mode = QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
 
@@ -33,13 +33,13 @@ FifoTcspc(parent)
       modulator = new PLIMLaserModulator(this);
 
    processor = createEventProcessor<Cronologic>(this, 10000, 10000);
-   
+
    threshold = { -60.0, -60.0, -60.0 };
    time_shift = { 0, 0, 0 };
 
    checkCard();
    configureCard();
-   
+
    if (acq_mode == FLIM)
    {
       micro_downsample = 0;
@@ -96,11 +96,11 @@ ParameterClass getParameterClass(const QString& parameter, int& channel)
    {
       return NumPixelsPLIM;
    }
-   
+
    return Unknown;
 }
 
-void Cronologic::setParameter(const QString& parameter, ParameterType type, QVariant value) 
+void Cronologic::setParameter(const QString& parameter, ParameterType type, QVariant value)
 {
    int channel;
    ParameterClass c = getParameterClass(parameter, channel);
@@ -119,8 +119,8 @@ void Cronologic::setParameter(const QString& parameter, ParameterType type, QVar
 
 };
 
-QVariant Cronologic::getParameter(const QString& parameter, ParameterType type) 
-{ 
+QVariant Cronologic::getParameter(const QString& parameter, ParameterType type)
+{
    int channel;
    ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold)
@@ -165,7 +165,7 @@ QVariant Cronologic::getParameterLimit(const QString& parameter, ParameterType t
 };
 
 QVariant Cronologic::getParameterMinIncrement(const QString& parameter, ParameterType type)
-{ 
+{
    int channel;
    ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold || c == StartThreshold)
@@ -174,15 +174,15 @@ QVariant Cronologic::getParameterMinIncrement(const QString& parameter, Paramete
       return 1;
 
    return 0.0;
-}; 
+};
 
 EnumerationList Cronologic::getEnumerationList(const QString& parameter)
-{ 
-   return EnumerationList(); 
+{
+   return EnumerationList();
 };
 
 bool Cronologic::isParameterWritable(const QString& parameter)
-{ 
+{
    int channel;
    ParameterClass c = getParameterClass(parameter, channel);
    if (c == Threshold || c == StartThreshold)
@@ -195,9 +195,9 @@ bool Cronologic::isParameterWritable(const QString& parameter)
    return true;
 };
 
-bool Cronologic::isParameterReadOnly(const QString& parameter) 
-{ 
-   return false; 
+bool Cronologic::isParameterReadOnly(const QString& parameter)
+{
+   return false;
 };
 
 
@@ -220,7 +220,7 @@ void Cronologic::checkCard()
    // prepare initialization
    timetagger4_init_parameters params;
    timetagger4_get_default_init_parameters(&params);
-   params.buffer_size[0] = 8 * 1024 * 1024;	
+   params.buffer_size[0] = 8 * 1024 * 1024;
    params.board_id = 0;						// number copied to "card" field of every packet, allowed range 0..255
    params.card_index = 0;						// initialize first card found in the system
    // ordering depends on PCIe slot position if more than one card is present
@@ -287,25 +287,25 @@ void Cronologic::configureCard()
       // do not filter any hits
       // fine timestamp is a 30 bit unsigned int
       config.channel[i].start = 0;				// discard hits with fine timestamp less than start
-      config.channel[i].stop =  1 << 30;		// discard hits with fine timestamp more than stop
+      config.channel[i].stop = 1 << 30;		// discard hits with fine timestamp more than stop
    }
 
    for (int i = 0; i < n_chan; i++)
-      config.dc_offset[i+1] = threshold[i] * 1e-3;
+      config.dc_offset[i + 1] = threshold[i] * 1e-3;
 
    int marker_channel = 3;
    config.channel[marker_channel].enabled = true;
    config.channel[marker_channel].start = 0;
    config.channel[marker_channel].stop = 1 << 30;
-   
-   config.dc_offset[marker_channel+1] = 1; // arduino signal is only ~1.8V driving 50Ohm load
-   config.trigger[marker_channel+1].rising = true;
-   config.trigger[marker_channel+1].falling = true;
+
+   config.dc_offset[marker_channel + 1] = 1; // arduino signal is only ~1.8V driving 50Ohm load
+   config.trigger[marker_channel + 1].rising = true;
+   config.trigger[marker_channel + 1].falling = true;
 
    // start group on falling edges on the start channel
    config.trigger[0].rising = true;	// disable packet generation on rising edge of start pulse
    config.trigger[0].falling = false;	// enable packet generation on falling edge of start pulse
-   config.dc_offset[0] = start_threshold * 1e-3; 
+   config.dc_offset[0] = start_threshold * 1e-3;
 
    // activate configuration
    CHECK(timetagger4_configure(device, &config));
@@ -383,7 +383,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          std::lock_guard<std::mutex> lk(cl_mutex);
          status = timetagger4_read(device, &read_config, &read_data);
       }
-      
+
       if (status > 0)
       {
          QThread::usleep(10);
@@ -392,7 +392,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          continue;
       }
       continues = 0;
-      
+
       CHECK(read_data.error_code);
 
       // iterate over all packets received with the last read
@@ -401,12 +401,12 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
       {
          // Measure sync rate
          int update_count = (acq_mode == PLIM) ? 1000 : 10000;
-         if (packet_count % (update_count+1) == 0)
+         if (packet_count % (update_count + 1) == 0)
          {
             if (last_update_time > 0)
             {
                sync_period_bins = static_cast<double>(p->timestamp - last_update_time) / (update_count * sync_divider);
-               
+
                if (acq_mode == FLIM)
                {
                   n_bins = ceil(sync_period_bins);
@@ -416,11 +416,11 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                {
                   sync_rate_hz = 1.0; // TODO: workaround
                }
-   
+
             }
 
             last_update_time = p->timestamp;
-            rates.sync = sync_rate_hz;
+            flim_status.rates["SYNC"] = sync_rate_hz;
          }
          packet_count++;
 
@@ -428,17 +428,18 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
          int hit_count = 2 * p->length;
          if (flags & TIMETAGGER4_PACKET_FLAG_ODD_HITS)
-              hit_count -= 1;
+            hit_count -= 1;
 
          flags = flags & 0xFE; // get rid of odd hits flag
 
-
          if (flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
-         {
-         }  //std::cout << "Slow sync\n";
-         else if (flags)
-            std::cout << "Flag: " << (int) p->flags << "\n";
-        
+            flim_status.warnings["Slow sync rate"] = FlimWarning(Critical);
+         if ((flags & TIMETAGGER4_PACKET_FLAG_DMA_FIFO_FULL) || 
+             (flags & TIMETAGGER4_PACKET_FLAG_SHORTENED))
+            flim_status.warnings["FIFO buffer full"] = FlimWarning(Warning);
+         if (flags & TIMETAGGER4_PACKET_FLAG_HOST_BUFFER_FULL)
+            flim_status.warnings["Host buffer full"] = FlimWarning(Warning);
+
          uint64_t macro_time = p->timestamp;
 
          if (acq_mode == AcquisitionMode::PLIM)
@@ -455,17 +456,17 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          if (macro_time_rollovers == -1)
             macro_time_rollovers = new_macro_time_rollovers;
 
-//         assert(new_macro_time_rollovers - macro_time_rollovers < 0xFFFF);
+         //         assert(new_macro_time_rollovers - macro_time_rollovers < 0xFFFF);
          uint64_t rollovers = new_macro_time_rollovers - macro_time_rollovers;
          uint64_t rollover_events = ceil(((double)rollovers) / (1 << 16));
 
          size_t required_size = idx + hit_count + rollover_events;
          if (required_size >= buffer.size())
             buffer.resize(required_size * 1.2);
-         
+
          for (int i = 0; i < rollover_events; i++)
          {
-            uint16_t rollovers_i = (uint16_t) std::min(rollovers, 0xFFFFULL);
+            uint16_t rollovers_i = (uint16_t)std::min(rollovers, 0xFFFFULL);
             buffer[idx++] = { rollovers_i, 0xF };
             rollovers -= rollovers_i;
          }
@@ -473,12 +474,12 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
          uint32_t* packet_data = (uint32_t*)(p->data);
          for (int i = 0; i < hit_count; i++)
-         {            
+         {
             TcspcEvent evt;
 
             uint64_t hit_fast = *(packet_data + i);
             int channel = hit_fast & 0xF;
-            
+
             uint64_t micro_time = hit_fast >> 8;
             uint64_t adj_macro_time = macro_time;
 
@@ -489,12 +490,12 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                double micro_time_f = modf(micro_time / sync_period_bins, &intpart)*sync_period_bins;
                if (channel < 3)
                   micro_time_f += time_shift[channel];
-               micro_time = ((uint64_t) std::round(micro_time_f)) % n_bins;
+               micro_time = ((uint64_t)std::round(micro_time_f)) % n_bins;
                adj_macro_time += std::round(intpart * sync_period_bins);
             }
 
             uint16_t downsampled_micro_time = micro_time >> micro_downsample;
-            
+
             uint64_t marker = 0;
             int ignore = false;
 
@@ -505,14 +506,14 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             {
                // Is the marker the rising or falling edge?
                bool rising = hit_fast & 0x10;
-               uint64_t time = (hit_fast>>8) + macro_time;
+               uint64_t time = (hit_fast >> 8) + macro_time;
 
                if (rising)
                {
                   // We don't want to include rising edge in data stream
                   last_mark_rise_time = time;
                   ignore = true;
-               }  
+               }
                else
                {
                   uint64_t marker_length_i = time - last_mark_rise_time;
@@ -552,7 +553,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
 
 
             if (!ignore)
-                buffer[idx++] = evt;
+               buffer[idx++] = evt;
          }
 
          p = crono_next_packet(p);

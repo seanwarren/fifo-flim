@@ -14,7 +14,7 @@ using namespace std;
 const double PI = 3.141592653589793238463;
 
 SimTcspc::SimTcspc(QObject* parent) :
-FifoTcspc(parent)
+   FifoTcspc(FlimStatus(), parent)
 {
    time_resolution_ps = T / (1 << n_bits);
 

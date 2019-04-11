@@ -7,8 +7,9 @@
 
 using namespace std;
  
-FifoTcspc::FifoTcspc(QObject* parent) :
-	ParametricImageSource(parent)
+FifoTcspc::FifoTcspc(FlimStatus flim_status, QObject* parent) :
+	flim_status(flim_status),
+   ParametricImageSource(parent)
 {
    control_mutex = new QMutex;
 }
