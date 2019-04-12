@@ -20,7 +20,7 @@ void CHECK(int err)
 }
 
 Cronologic::Cronologic(QObject* parent) :
-   FifoTcspc(FlimStatus({ "SYNC" }, {"Slow sync rate", "FIFO buffer full", "Host buffer full"}), parent)
+   FifoTcspc(FlimStatus({ "SYNC" }, {"Sync Rate", "FIFO Buffer", "Host Buffer"}), parent)
 {
    QString mode = QInputDialog::getItem(nullptr, "Choose Imaging Mode", "Imaging Mode", { "FLIM", "PLIM" }, 0, false);
 

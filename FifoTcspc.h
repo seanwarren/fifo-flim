@@ -52,7 +52,7 @@ private:
 class FlimStatus
 {
 public:
-   FlimStatus(const QStringList& rate_names = { "sync" }, const QStringList& warning_names = {"fifo_overflow"})
+   FlimStatus(const QStringList& rate_names = { "SYNC" }, const QStringList& warning_names = {"FIFO Buffer"})
    {
       for (auto& name : rate_names)
          rates[name] = 0;
