@@ -10,7 +10,8 @@ public:
       PixelMarker = 1,
       LineStartMarker = 2,
       LineEndMarker = 4,
-      FrameMarker = 8
+      FrameMarker = 8,
+      ImageMarker = 16
    };
 
    uint16_t macro_time;
@@ -40,6 +41,11 @@ public:
    {
       return micro_time >> 4;
    };
+
+   void addMark(Mark mark_)
+   {
+      micro_time |= (mark_ << 4);
+   }
 };
 
 class TcspcEventConsumer

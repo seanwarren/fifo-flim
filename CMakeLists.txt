@@ -21,32 +21,29 @@ set(CMAKE_AUTOMOC ON)
 cmake_policy(SET CMP0071 OLD)
 
 set(SOURCE
-   FLIMage.cpp
+   LiveFlimReader.cpp
    FifoTcspc.cpp
    SimTcspc.cpp
    EventProcessor.cpp
    FlimFileWriter.cpp
-   FlimDataSource.cpp
-   ${BH_SOURCE}
-   ${CL_SOURCE}
 )
 
 set(HEADERS
-   FlimDataSource.h
+   LiveFlimReader.h
    FifoTcspc.h
    FifoTcspcFactory.h
-   FLIMage.h
    TcspcEvent.h
    PacketBuffer.h
    SimTcspc.h
    EventProcessor.h
    FlimFileWriter.h
-   FlimFileReader.h
    PLIMLaserModulator.h
 )
 
 add_library(fifo-flim STATIC ${SOURCE} 
                              ${HEADERS} 
+                             ${BH_SOURCE}
+                             ${CL_SOURCE}      
                              ${UI_HEADERS} 
                              ${UI_RESOURCES})
 
@@ -59,6 +56,7 @@ target_include_directories(fifo-flim INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 target_link_libraries(fifo-flim ${OpenCV_LIBS} 
                                 ${BeckerHickl_LIBRARIES} 
                                 ${Cronologic_LIBRARIES}
+                                FlimReader
                                 InstrumentControl
                                 Qt5::Widgets
                                 Qt5::SerialPort)

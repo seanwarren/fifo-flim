@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cassert>
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -37,6 +38,8 @@ Cronologic::Cronologic(QObject* parent) :
    threshold = { -60.0, -60.0, -60.0 };
    time_shift = { 0, 0, 0 };
 
+   markers = Markers{ 0x0, 0x1, 0x2, 0x4, 0x8 };
+
    checkCard();
    configureCard();
 
@@ -56,14 +59,7 @@ Cronologic::Cronologic(QObject* parent) :
    micro_time_resolution_ps = bin_size_ps * (1LL << micro_downsample);
    macro_time_resolution_ps = bin_size_ps * (1LL << macro_downsample);
 
-   cur_flimage = std::make_shared<FLIMage>(acq_mode == PLIM, micro_time_resolution_ps, macro_time_resolution_ps, histogram_bits, n_chan);
-
-   processor->addTcspcEventConsumer(cur_flimage);
-
    startThread();
-
-   int a = sizeof(TcspcEvent);
-   a = 1;
 }
 
 enum ParameterClass { StartThreshold, Threshold, TimeShift, NumPixelsPLIM, Unknown };
@@ -272,8 +268,6 @@ void Cronologic::configureCard()
    // of interest have to be set explicitly
    timetagger4_get_default_configuration(device, &config);
 
-   int n_chan = getNumChannels();
-
    // set config of the 4 TDC channels, inputs A - D
    for (int i = 0; i < n_chan; i++)
    {
@@ -332,7 +326,6 @@ void Cronologic::startModule()
    if (acq_mode == PLIM)
    {
       int n_px = modulator->getNumPixels();
-      cur_flimage->setImageSize(n_px, n_px);
       modulator->setModulation(true);
    }
 
@@ -365,7 +358,7 @@ Cronologic::~Cronologic()
 }
 
 
-size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
+size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer, double buffer_status)
 {
 
    timetagger4_read_in read_config;
@@ -433,12 +426,12 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
          flags = flags & 0xFE; // get rid of odd hits flag
 
          if (flags & TIMETAGGER4_PACKET_FLAG_SLOW_SYNC)
-            flim_status.warnings["Slow sync rate"] = FlimWarning(Critical);
+            flim_status.warnings["Sync rate"] = FlimWarning(Critical);
          if ((flags & TIMETAGGER4_PACKET_FLAG_DMA_FIFO_FULL) || 
              (flags & TIMETAGGER4_PACKET_FLAG_SHORTENED))
-            flim_status.warnings["FIFO buffer full"] = FlimWarning(Warning);
+            flim_status.warnings["FIFO buffer"] = FlimWarning(Warning);
          if (flags & TIMETAGGER4_PACKET_FLAG_HOST_BUFFER_FULL)
-            flim_status.warnings["Host buffer full"] = FlimWarning(Warning);
+            flim_status.warnings["Host buffer"] = FlimWarning(Warning);
 
          uint64_t macro_time = p->timestamp;
 
@@ -447,7 +440,7 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
             if ((idx + 1) >= buffer.size())
                buffer.resize(buffer.size() * 2);
             // Insert pixel marker for PLIM
-            buffer[idx++] = { macro_time & 0xFFFF, 0xF | (MarkPixel << 4) };
+            buffer[idx++] = { (uint16_t) (macro_time & 0xFFFF), (uint16_t) (0xF | (markers.PixelMarker << 4)) };
          }
 
          uint64_t div_macro_time = macro_time >> macro_downsample;
@@ -520,19 +513,19 @@ size_t Cronologic::readPackets(std::vector<TcspcEvent>& buffer)
                   double marker_length = marker_length_i * bin_size_ps; // TODO: convert times to ints
                   if (marker_length < 30e3)
                   {
-                     marker = MarkLineEnd; // 23e3
+                     marker = markers.LineEndMarker; // 23e3
                      line_active = false;
                   }
                   else if (marker_length < 100e3)
                   {
-                     marker = MarkLineStart; // 71
+                     marker = markers.LineStartMarker; // 71
                      line_active = true;
                      n_line++;
                      n_pixel = 0;
                   }
                   else if (marker_length < 200e3)
                   {
-                     marker = MarkFrame; // 154e3
+                     marker = markers.LineStartMarker; // 154e3
                      n_line = 0;
                   }
                   else

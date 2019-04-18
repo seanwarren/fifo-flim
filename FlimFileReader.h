@@ -18,7 +18,7 @@ public:
       fs.seekg(data_position);
 
       image = std::make_shared<FLIMage>(using_pixel_markers, microtime_resolution, macrotime_resolution, 0, n_chan);
-      image->setBidirectional(bidirectional);
+      image->setBidirectionalScan(bidirectional);
 
       processor = createEventProcessor<FlimFileReader>(this, 10000, 10000);
       processor->addTcspcEventConsumer(image);

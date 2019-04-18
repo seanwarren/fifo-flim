@@ -96,28 +96,14 @@ void FifoTcspc::stopScanning()
 	stopFIFO();
 }
 
-cv::Mat FifoTcspc::getImage()
-{
-	return cur_flimage->getIntensity().clone();
-}
-
-cv::Mat FifoTcspc::getImageUnsafe()
-{
-	return cur_flimage->getIntensity();
-}
-
 void FifoTcspc::startFIFO()
 {
-
-   cur_flimage->setFrameAccumulation(frame_accumulation);
-
 	scanning = true;
 
    startModule();
 
 	// Start thread
    processor->start();
-
 }
 
 void FifoTcspc::stopFIFO()

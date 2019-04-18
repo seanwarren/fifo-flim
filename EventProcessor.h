@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QString>
-#include <thread>
+#include <future>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -10,7 +10,7 @@
 
 class EventProcessor
 {
-   typedef std::function<size_t(std::vector<TcspcEvent>& buffer)> ReaderFcn;
+   typedef std::function<size_t(std::vector<TcspcEvent>& buffer, double buffer_fill_factor)> ReaderFcn;
 
 
 public:
@@ -56,8 +56,8 @@ protected:
    PacketBuffer<TcspcEvent> packet_buffer;
    ReaderFcn reader_fcn;
 
-   std::thread processor_thread;
-   std::thread reader_thread;
+   std::future<void> processor_thread;
+   std::future<void> reader_thread;
 
    std::vector<std::shared_ptr<TcspcEventConsumer>> consumers;
    std::function<void(void)> frame_increment_callback;
@@ -77,6 +77,6 @@ protected:
 template<class Provider>
 std::shared_ptr<EventProcessor> createEventProcessor(Provider* obj, int n_buffers, int buffer_length)
 {
-   auto read_fcn = std::bind(&Provider::readPackets, obj, std::placeholders::_1);
+   auto read_fcn = std::bind(&Provider::readPackets, obj, std::placeholders::_1, std::placeholders::_2);
    return std::make_shared<EventProcessor>(read_fcn, n_buffers, buffer_length);
 }

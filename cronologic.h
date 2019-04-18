@@ -2,9 +2,9 @@
 
 #include "TimeTagger4_interface.h"
 #include "ImageSource.h"
-#include "FLIMage.h"
 #include "FifoTcspc.h"
 #include "PLIMLaserModulator.h"
+#include "AbstractEventReader.h"
 #include <mutex>
 
 struct cl_event 
@@ -27,15 +27,22 @@ public:
 
 	void init();
 
-   size_t readPackets(std::vector<TcspcEvent>& buffer); // return whether any packets were read
+   size_t readPackets(std::vector<TcspcEvent>& buffer, double buffer_status); // return whether any packets were read
 
    const QString describe() { return board_name; }
    double getSyncRateHz() { return sync_rate_hz; }
-   double getMicroBaseResolutionPs() { return micro_time_resolution_ps; }
-   double getMacroBaseResolutionPs() { return macro_time_resolution_ps; }
-   int getNumChannels() { return n_chan; }
-   int getNumTimebins() { return n_bins; }
    bool usingPixelMarkers() { return acq_mode == PLIM; };
+
+   TcspcAcquisitionParameters getAcquisitionParameters()
+   {
+      return TcspcAcquisitionParameters{
+         micro_time_resolution_ps,
+         macro_time_resolution_ps,
+         n_bins,
+         n_chan,
+      };
+   }
+
 
    void setParameter(const QString& parameter, ParameterType type, QVariant value);
    QVariant getParameter(const QString& parameter, ParameterType type);
@@ -60,6 +67,8 @@ private:
    void readRemainingPhotonsFromStream();
 
    timetagger4_device* device;
+
+   Markers markers;
 
    double bin_size_ps;
    double macro_time_resolution_ps;

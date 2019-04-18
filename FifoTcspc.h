@@ -8,10 +8,10 @@
 #include <QFile> 
 #include <memory>
 #include "EventProcessor.h"
-#include "FLIMage.h"
 #include <unordered_map>
 #include <chrono>
 
+/*
 enum Markers
 {
    MarkPhoton = 0x0,
@@ -19,6 +19,16 @@ enum Markers
    MarkLineStart = 0x2,
    MarkLineEnd = 0x4,
    MarkFrame = 0x8
+};
+*/
+
+class TcspcAcquisitionParameters
+{
+public:
+   double time_resolution_ps;
+   double macro_resolution_ps;
+   int n_timebins;
+   int n_channels;
 };
 
 enum FlimWarningStatus
@@ -32,7 +42,7 @@ class FlimWarning
 {
 public:
 
-   FlimWarning(FlimWarningStatus status = OK, std::chrono::system_clock::time_point expiry = std::chrono::system_clock::now() + std::chrono::seconds(2)) :
+   FlimWarning(FlimWarningStatus status = OK, std::chrono::system_clock::time_point expiry = std::chrono::system_clock::now() + std::chrono::seconds(10)) :
       status(status), expiry(expiry)
    {}
 
@@ -52,7 +62,7 @@ private:
 class FlimStatus
 {
 public:
-   FlimStatus(const QStringList& rate_names = { "SYNC" }, const QStringList& warning_names = {"FIFO Buffer"})
+   FlimStatus(const QStringList& rate_names = { "SYNC" }, const QStringList& warning_names = {"FIFO Buffer", "Host Buffer"})
    {
       for (auto& name : rate_names)
          rates[name] = 0;
@@ -98,19 +108,24 @@ public:
 
    FlimStatus getStatus() { return flim_status; };
 
-   virtual int getNumChannels() = 0;
-   virtual int getNumTimebins() = 0;
+   virtual TcspcAcquisitionParameters getAcquisitionParameters() = 0;
+
+   //virtual int getNumChannels() = 0;
+   //virtual int getNumTimebins() = 0;
+   //virtual double getMicroBaseResolutionPs() = 0;
+   //virtual double getMacroBaseResolutionPs() = 0;
+   
    virtual double getSyncRateHz() = 0;
-   virtual double getMicroBaseResolutionPs() = 0;
-   virtual double getMacroBaseResolutionPs() = 0;
    virtual const QString describe() = 0;
    virtual bool usingPixelMarkers() = 0;
 
-
-   cv::Mat getImage();
-   cv::Mat getImageUnsafe();
-
-   std::shared_ptr<FLIMage> getPreviewFLIMage() { return cur_flimage; };
+   
+   // TODO: seperate parameteric image / image
+   cv::Mat getImage() { return cv::Mat();} 
+   cv::Mat getImageUnsafe() { return cv::Mat(); }
+   
+   //std::shared_ptr<FLIMage> getPreviewFLIMage() { return cur_flimage; };
+   
 
    void frameIncremented();
 
@@ -135,7 +150,6 @@ protected:
    virtual void startModule() {};
    virtual void stopModule() {};
    
-   std::shared_ptr<FLIMage> cur_flimage;
 
    int frame_accumulation = 1;
    int n_images = 1;

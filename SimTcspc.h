@@ -1,7 +1,7 @@
 #pragma once
 
-#include "FLIMage.h"
 #include "FifoTcspc.h"
+#include "AbstractEventReader.h"
 #include <random>
 
 
@@ -14,13 +14,20 @@ public:
    ~SimTcspc();
 
    void init();
-   size_t readPackets(std::vector<TcspcEvent>& buffer); // return whether any packets were read
+   size_t readPackets(std::vector<TcspcEvent>& buffer, double buffer_fill_factor); // return whether any packets were read
 
    double getSyncRateHz() { return 1e12/T; };
-   double getMicroBaseResolutionPs() { return time_resolution_ps; }
-   double getMacroBaseResolutionPs() { return macro_resolution_ps; }
-   int getNumChannels() { return n_chan; }
-   int getNumTimebins() { return 1 << n_bits; };
+   
+   TcspcAcquisitionParameters getAcquisitionParameters()
+   {
+      return TcspcAcquisitionParameters{
+         time_resolution_ps,
+         macro_resolution_ps,
+         1 << n_bits,
+         n_chan,
+      };
+   }
+   
    bool usingPixelMarkers() { return false; }
 
    const QString describe() { return "Simulated TCSPC module"; }
@@ -67,6 +74,8 @@ public:
 
 private:
 
+   Markers markers;
+
    void startModule();
    void configureModule();
 
@@ -97,6 +106,7 @@ private:
    uint64_t cur_macro_time = 0;
    uint64_t macro_time_rollovers = 0;
    std::default_random_engine generator;
+   std::chrono::system_clock::time_point last_frame_time;
 
    int px_offset;
 
@@ -106,31 +116,7 @@ private:
 
 protected:
 
-   void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx)
-   {
-      uint64_t new_macro_time_rollovers = macro_time / (1 << 16);
-      uint64_t rollover_max = 0xFFFF;
-
-      while ((idx + new_macro_time_rollovers - macro_time_rollovers) > buffer.size())
-         buffer.resize(buffer.size() * 2);
-
-      while (new_macro_time_rollovers > macro_time_rollovers)
-      {
-         uint16_t r = (uint16_t) std::min(new_macro_time_rollovers - macro_time_rollovers, rollover_max);
-         buffer[idx++] = { r, 0xF };
-         macro_time_rollovers += r;
-      }
-
-      TcspcEvent evt;
-      evt.macro_time = macro_time & 0xFFFF;
-      if (mark != 0)
-         evt.micro_time = 0xF | (mark << 4);
-      else
-         evt.micro_time = channel | (micro_time << 4);
-
-      buffer[idx++] = evt;
-
-   }
+   void addEvent(uint64_t macro_time, uint32_t micro_time, uint8_t channel, uint8_t mark, std::vector<TcspcEvent>& buffer, int& idx);
 
    cv::Mat intensity;
 

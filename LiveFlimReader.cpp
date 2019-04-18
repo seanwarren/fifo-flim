@@ -1,6 +1,101 @@
-#include "FLIMage.h"
+#include "LiveFlimReader.h"
 #include <limits>
 
+
+LiveEventReader::LiveEventReader() : 
+   AbstractEventReader(sizeof(TcspcEvent))
+{
+   block.resize(block_size * packet_size);
+   writer_block_it = block.begin();
+}
+
+void LiveEventReader::addEvent(const TcspcEvent& evt)
+{
+   std::copy_n((char*)&evt, packet_size, writer_block_it);
+   writer_block_it += packet_size;
+   if (writer_block_it == block.end())
+   {
+      //std::unique_lock<std::mutex> lk(m);
+      data.push_back(block);
+      cv.notify_one();
+      writer_block_it = block.begin();
+   }
+};
+
+double LiveEventReader::getProgress() 
+{ 
+   return 0; 
+}; 
+
+bool LiveEventReader::hasMoreData() 
+{ 
+   return has_more_data; 
+};
+
+void LiveEventReader::setEventStreamAboutToStart() 
+{ 
+   clear();
+   has_more_data = true;
+}
+
+void LiveEventReader::setEventStreamFinished()
+{ 
+   has_more_data = false; 
+   cv.notify_one();
+}
+
+
+std::tuple<class FifoEvent, uint64_t> LiveEventReader::getRawEvent()
+{
+   TcspcEvent evt = getPacket<TcspcEvent>();
+
+   FifoEvent e;
+   uint64_t macro_time_offset = 0;
+
+   e.micro_time = evt.microTime();
+   e.macro_time = evt.macro_time;
+   e.channel = evt.channel();
+   e.mark = evt.isMark() ? evt.mark() : 0;
+   e.valid = !evt.isMacroTimeRollover();
+
+   if (evt.isMacroTimeRollover())
+      macro_time_offset += ((uint64_t)0xFFFF) * evt.macro_time;
+
+   return std::tuple<FifoEvent, uint64_t>(e, macro_time_offset);
+}
+
+LiveFlimReader::LiveFlimReader(const TcspcAcquisitionParameters& params, QObject* parent) :
+   params(params)
+{
+
+   macro_time_resolution_ps = params.macro_resolution_ps;
+
+   markers.ImageMarker = 16;
+   markers.FrameMarker = 8;
+   markers.LineEndMarker = 4;
+   markers.LineStartMarker = 2;
+   markers.PixelMarker = 0x0; // no pixel marker
+
+   live_event_reader = std::make_shared<LiveEventReader>();
+   event_reader = live_event_reader;
+
+   setNumChannels(params.n_channels);
+   initaliseTimepoints(params.n_timebins, params.time_resolution_ps);
+}
+
+void LiveFlimReader::addEvent(const TcspcEvent& evt)
+{
+   live_event_reader->addEvent(evt);
+}
+
+void LiveFlimReader::setImageSize(int n_x_, int n_y_)
+{
+   n_x = n_x_;
+   n_y = n_y_;
+}
+
+
+/*
 FLIMage::FLIMage(bool using_pixel_markers, float time_resolution_ps, float macro_resolution_ps, int histogram_bits, int n_chan, QObject* parent) :
    FlimDataSource(parent),
    using_pixel_markers(using_pixel_markers),
@@ -117,14 +212,13 @@ void FLIMage::addEvent(const TcspcEvent& p)
          {
             cur_x++;
 
-            /*
-            if (isValidPixel() && (frame_idx % frame_accumulation == 0))
-            {
-               intensity.at<quint16>(cur_x, cur_y) = 0;
-               sum_time.at<float>(cur_x, cur_y) = 0;
-               mean_arrival_time.at<float>(cur_x, cur_y) = 0;
-            }
-            */
+            
+            //if (isValidPixel() && (frame_idx % frame_accumulation == 0))
+            //{
+            //   intensity.at<quint16>(cur_x, cur_y) = 0;
+            //   sum_time.at<float>(cur_x, cur_y) = 0;
+            //   mean_arrival_time.at<float>(cur_x, cur_y) = 0;
+            //}
          }
 
          if (mark & TcspcEvent::LineStartMarker)
@@ -254,13 +348,12 @@ void FLIMage::addEvent(const TcspcEvent& p)
             }
 
          }
-         /*
-         if (construct_histogram)
-         {
-            int bin = p.micro_time >> bit_shift;
-            cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
-         }
-         */
+         
+         //if (construct_histogram)
+         //{
+         //   int bin = p.micro_time >> bit_shift;
+         //   cur_histogram[cur_x*n_bins + cur_y*n_x*n_bins + bin]++;
+        //}
       }
    }
 
@@ -284,3 +377,5 @@ void FLIMage::refreshDisplay()
       emit decayUpdated();
    }
 }
+
+*/

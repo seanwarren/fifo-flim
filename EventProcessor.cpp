@@ -9,8 +9,8 @@ void EventProcessor::start()
       consumer->eventStreamAboutToStart();
 
    running = true;
-   reader_thread = std::thread(&EventProcessor::readerThread, this);
-   processor_thread = std::thread(&EventProcessor::processorThread, this);
+   reader_thread = std::async(std::launch::async, &EventProcessor::readerThread, this);
+   processor_thread = std::async(std::launch::async, &EventProcessor::processorThread, this);
 }
 
 
@@ -20,12 +20,9 @@ void EventProcessor::processorThread()
    size_t n_consumers = consumers.size();
    while (running)
    {
-//      if ((ridx++) % 1000 == 0)
-//         std::cout << "Fill factor: " << packet_buffer.fillFactor()  << "\n";
-
       packet_buffer.waitForNextBuffer();
       size_t n = packet_buffer.getProcessingBufferSize();
-      std::vector<TcspcEvent> buffer = packet_buffer.getNextBufferToProcess();
+      auto& buffer = packet_buffer.getNextBufferToProcess();
       int frame_increment = 0;
       int image_increment = 0;
 
@@ -45,13 +42,14 @@ void EventProcessor::processorThread()
 
                   if (run_continuously)
                   {
-                    if (frame_idx == -1)
-                     consumer->nextImageStarted();
+                     if (frame_idx == -1)
+                        consumer->nextImageStarted();
                   }
                   else
                   {
                      if ((frame_idx + frame_increment) % frames_per_image == 0)
                      {
+                        evt.addMark(TcspcEvent::Mark::ImageMarker);
                         image_increment++;
                         if (image_idx + image_increment == n_images)
                         {
@@ -78,9 +76,6 @@ void EventProcessor::processorThread()
          for (int i = 0; i < frame_increment; i++)
             frame_increment_callback();
 
-      //for (auto& c : consumers)
-      //   c->imageSequenceFinished();
-
       packet_buffer.finishedProcessingBuffer();
 
    }
@@ -94,7 +89,7 @@ void EventProcessor::readerThread()
 
       if (buffer != nullptr) // failed to get buffer
       {
-         size_t n_read = reader_fcn(*buffer);
+         size_t n_read = reader_fcn(*buffer, packet_buffer.fillFactor());
 
          if (n_read > 0)
             packet_buffer.finishedFillingBuffer(n_read);
@@ -109,13 +104,11 @@ void EventProcessor::stop()
    running = false;
 
 
-   if (reader_thread.joinable())
-      reader_thread.join();
+   reader_thread.get();
 
    packet_buffer.setStreamFinished();
 
-   if (processor_thread.joinable())
-      processor_thread.join();
+   processor_thread.get();
 
    for (auto& consumer : consumers)
       consumer->eventStreamFinished();

@@ -52,13 +52,15 @@ void FlimFileWriter::writeFileHeader()
    header_stream.setDevice(&buffer);
    header_stream.setByteOrder(QDataStream::LittleEndian);
 
+   auto tcspc_params = tcspc->getAcquisitionParameters();
+
    writeTag("CreationDate", QDateTime::currentDateTime());
    writeTag("TcspcSystem", tcspc->describe());
    writeTag("SyncRate_Hz", tcspc->getSyncRateHz());
-   writeTag("NumTimeBins", (int64_t) tcspc->getNumTimebins());
-   writeTag("NumChannels", (int64_t) tcspc->getNumChannels());
-   writeTag("MicrotimeResolutionUnit_ps", tcspc->getMicroBaseResolutionPs());
-   writeTag("MacrotimeResolutionUnit_ps", tcspc->getMacroBaseResolutionPs());
+   writeTag("NumTimeBins", (int64_t) tcspc_params.n_timebins);
+   writeTag("NumChannels", (int64_t) tcspc_params.n_channels);
+   writeTag("MicrotimeResolutionUnit_ps", tcspc_params.time_resolution_ps);
+   writeTag("MacrotimeResolutionUnit_ps", tcspc_params.macro_resolution_ps);
    writeTag("UsingPixelMarkers", tcspc->usingPixelMarkers());
 
    for(auto&& m : metadata)
@@ -98,17 +100,25 @@ void FlimFileWriter::openFile()
    if (file.isOpen())
       file.close();
 
-   QString new_ext = QString("_%1.ffd").arg(image_index, 3, 10, QChar('0'));
+   QString new_ext = QString(" _%1.ffd").arg(image_index, 3, 10, QChar('0'));
    QString file_name_with_number = file_name;
    file_name_with_number.replace(".ffd", new_ext);
-
-   std::string fn = file_name_with_number.toStdString();
    
+   if (file_name_with_number.size() > 260)
+   {
+      emit error("File name with path is too long");
+      return;
+   }
+
+
    file.setFileName(file_name_with_number);
    bool success = file.open(QIODevice::WriteOnly);
 
    if (!success)
-      emit error("Could not open file!");
+   {
+      emit error("Could not open file for writing");
+      return;
+   }
 
    data_stream.setDevice(&file);
    data_stream.setByteOrder(QDataStream::LittleEndian);
@@ -124,7 +134,7 @@ void FlimFileWriter::stopRecording()
 
    data_stream.setDevice(nullptr);
 
-   if (file.size() == 0)
+   if (file.isOpen() && file.size() == 0)
       emit error("Written file is empty");
    
    file.close();

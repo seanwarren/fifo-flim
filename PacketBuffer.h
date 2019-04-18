@@ -31,6 +31,7 @@ public:
 
       fill_idx = 0;
       process_idx = 0;
+      stream_finished = false;
    }
 
    double fillFactor()
