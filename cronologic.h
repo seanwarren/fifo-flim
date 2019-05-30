@@ -95,8 +95,8 @@ private:
    std::vector<int> time_shift;
    
    int sync_divider = 16;
-   double sync_rate_hz = 80.2e6;//TODO
-   double sync_period_bins = 25;//TODO
+   double sync_rate_hz = 80.2e6;
+   double sync_period_bins = 25;
    bool running = false;
 
    std::mutex cl_mutex;
